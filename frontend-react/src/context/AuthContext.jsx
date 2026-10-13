@@ -15,10 +15,18 @@ export function AuthProvider({ children }) {
     }
     try {
       const response = await authApi.me();
-      setUser(response.data);
+      setUser({ ...response.data, role: 'customer' });
     } catch (error) {
-      localStorage.removeItem('access_token');
-      setUser(null);
+      // Fall through to admin profile: admins authenticate with is_admin tokens
+      // that /auth/me rejects.
+      try {
+        const adminResponse = await authApi.adminMe();
+        setUser({ ...adminResponse.data, role: 'admin' });
+      } catch (adminError) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -31,6 +39,9 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const response = await authApi.login({ email, password });
     localStorage.setItem('access_token', response.data.access_token);
+    if (response.data.refresh_token) {
+      localStorage.setItem('refresh_token', response.data.refresh_token);
+    }
     await fetchUser();
     return response.data;
   };
@@ -40,8 +51,17 @@ export function AuthProvider({ children }) {
     return response.data;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        await authApi.logout(refreshToken);
+      } catch (error) {
+        console.error('Server logout failed:', error);
+      }
+    }
     localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     setUser(null);
   };
 
@@ -52,6 +72,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     isAuthenticated: !!user,
+    isAdmin: user?.role === 'admin',
     refreshUser: fetchUser,
   };
 

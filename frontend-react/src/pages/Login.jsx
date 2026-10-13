@@ -86,7 +86,7 @@ export default function Login() {
                   <input type="checkbox" />
                   <span>Remember me</span>
                 </label>
-                <Link to="/register" className="muted-link">Forgot password?</Link>
+                <Link to="/forgot-password" className="muted-link">Forgot password?</Link>
               </div>
 
               <button type="submit" className="btn btn-primary btn-block btn-large" disabled={loading}>

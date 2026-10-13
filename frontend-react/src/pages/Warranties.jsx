@@ -13,6 +13,9 @@ export default function Warranties() {
     product_id: '',
     serial_number: '',
     purchase_invoice_id: '',
+    purchase_source: 'Company Website',
+    proof_reference: '',
+    purchase_date: new Date().toISOString().slice(0, 16),
   });
 
   useEffect(() => {
@@ -40,13 +43,26 @@ export default function Warranties() {
         policy_id: Number(registerForm.policy_id),
         product_id: Number(registerForm.product_id),
         serial_number: registerForm.serial_number.trim(),
+        purchase_source: registerForm.purchase_source,
+        purchase_date: new Date(registerForm.purchase_date).toISOString(),
       };
       if (registerForm.purchase_invoice_id.trim()) {
         payload.purchase_invoice_id = Number(registerForm.purchase_invoice_id);
       }
+      if (registerForm.proof_reference.trim()) {
+        payload.proof_reference = registerForm.proof_reference.trim();
+      }
       await warrantyApi.register(payload);
       setShowRegister(false);
-      setRegisterForm({ policy_id: '', product_id: '', serial_number: '', purchase_invoice_id: '' });
+      setRegisterForm({
+        policy_id: '',
+        product_id: '',
+        serial_number: '',
+        purchase_invoice_id: '',
+        purchase_source: 'Company Website',
+        proof_reference: '',
+        purchase_date: new Date().toISOString().slice(0, 16),
+      });
       await loadRegistrations();
       alert('Warranty registered successfully!');
     } catch (err) {
@@ -69,9 +85,11 @@ export default function Warranties() {
 
   const getStatusClass = (status) => {
     const statuses = {
-      pending: 'status-pending',
-      approved: 'status-approved',
-      rejected: 'status-rejected',
+      PENDING: 'status-pending',
+      PENDING_REVIEW: 'status-pending',
+      ACTIVE: 'status-approved',
+      EXPIRED: 'status-rejected',
+      CANCELLED: 'status-rejected',
     };
     return statuses[status] || '';
   };
@@ -125,6 +143,39 @@ export default function Warranties() {
                   onChange={(e) => setRegisterForm({ ...registerForm, purchase_invoice_id: e.target.value })}
                 />
               </div>
+              <div className="form-group">
+                <label>Purchase Source</label>
+                <select
+                  value={registerForm.purchase_source}
+                  onChange={(e) => setRegisterForm({ ...registerForm, purchase_source: e.target.value })}
+                >
+                  <option value="Company Website">Company Website</option>
+                  <option value="Amazon">Amazon</option>
+                  <option value="Flipkart">Flipkart</option>
+                  <option value="Croma">Croma</option>
+                  <option value="Reliance Digital">Reliance Digital</option>
+                  <option value="Offline Store">Offline Store</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Proof Reference (required for non-website purchases)</label>
+                <input
+                  type="text"
+                  value={registerForm.proof_reference}
+                  onChange={(e) => setRegisterForm({ ...registerForm, proof_reference: e.target.value })}
+                  placeholder="Invoice / receipt number"
+                />
+              </div>
+              <div className="form-group">
+                <label>Purchase Date</label>
+                <input
+                  type="datetime-local"
+                  value={registerForm.purchase_date}
+                  onChange={(e) => setRegisterForm({ ...registerForm, purchase_date: e.target.value })}
+                  required
+                />
+              </div>
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowRegister(false)} className="btn btn-outline">
                   Cancel
@@ -151,13 +202,14 @@ export default function Warranties() {
             <div key={reg.id} className="warranty-card">
               <div className="warranty-header">
                 <h3>Product #{reg.product_id}</h3>
-                <span className={`warranty-status ${getStatusClass(reg.status)}`}>
-                  {reg.status}
+                <span className={`warranty-status ${getStatusClass(reg.warranty_status)}`}>
+                  {reg.warranty_status}
                 </span>
               </div>
               <div className="warranty-details">
                 <p>Serial: {reg.serial_number}</p>
                 <p>Policy: #{reg.policy_id}</p>
+                {reg.warranty_number && <p>Warranty No: {reg.warranty_number}</p>}
                 <p>Registered: {new Date(reg.created_at).toLocaleDateString()}</p>
               </div>
               <div className="warranty-actions">
@@ -165,7 +217,10 @@ export default function Warranties() {
                   onClick={async () => {
                     try {
                       const response = await warrantyApi.checkValidity(reg.id);
-                      alert(`Valid: ${response.data.valid}\nExpires: ${response.data.expires_at}`);
+                      const v = response.data;
+                      alert(
+                        `Status: ${v.warranty_status}\nValid: ${v.valid}\nExpires: ${new Date(v.warranty_end_date).toLocaleDateString()}\nDays remaining: ${v.days_remaining}`
+                      );
                     } catch (err) {
                       alert('Failed to check validity');
                     }

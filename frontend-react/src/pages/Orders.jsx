@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { orderApi, invoiceApi } from '../services/api';
+import { orderApi, invoiceApi, downloadInvoiceFile } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function Orders() {
@@ -101,15 +101,15 @@ export default function Orders() {
                 <button
                   onClick={async () => {
                     try {
-                      await invoiceApi.getByOrder(order.id);
-                      alert('Invoice available!');
+                      const invoice = await invoiceApi.getByOrder(order.id);
+                      await downloadInvoiceFile(invoice.data.id, invoice.data.invoice_number);
                     } catch (err) {
                       alert('Invoice not available yet');
                     }
                   }}
                   className="btn btn-outline order-action-btn"
                 >
-                  View Invoice
+                  Download Invoice
                 </button>
               </div>
             </div>

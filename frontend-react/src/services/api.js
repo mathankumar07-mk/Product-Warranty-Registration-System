@@ -19,13 +19,30 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const requestUrl = error.config?.url || '';
+  async (error) => {
+    const config = error.config;
+    const requestUrl = config?.url || '';
     const isAuthRequest = requestUrl.startsWith('/auth/');
     const hasToken = Boolean(localStorage.getItem('access_token'));
 
-    if (error.response?.status === 401 && hasToken && !isAuthRequest) {
+    if (error.response?.status === 401 && hasToken && !isAuthRequest && !config._retried) {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refresh_token: refreshToken,
+          });
+          localStorage.setItem('access_token', refreshResponse.data.access_token);
+          localStorage.setItem('refresh_token', refreshResponse.data.refresh_token);
+          config._retried = true;
+          config.headers.Authorization = `Bearer ${refreshResponse.data.access_token}`;
+          return api(config);
+        } catch (refreshError) {
+          // Refresh failed — fall through to logout.
+        }
+      }
       localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -36,6 +53,27 @@ export const authApi = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   me: () => api.get('/auth/me'),
+  adminMe: () => api.get('/admins/me'),
+  refresh: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
+  logout: (refreshToken) => api.post('/auth/logout', { refresh_token: refreshToken }),
+  changePassword: (data) => api.post('/auth/change-password', data),
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
+};
+
+export const adminApi = {
+  dashboard: () => api.get('/admin/dashboard'),
+  users: (page = 1, pageSize = 20) => api.get('/admin/users', { params: { page, page_size: pageSize } }),
+  orders: (params = {}) => api.get('/admin/orders', { params }),
+  payments: (page = 1, pageSize = 20) => api.get('/admin/payments', { params: { page, page_size: pageSize } }),
+  broadcast: (data) => api.post('/admin/notifications/broadcast', data),
+  searchWarranties: (params = {}) => api.get('/warranties/registrations/search', { params }),
+  listPolicies: () => api.get('/warranties/policies'),
+  importProducts: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/products/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 export const userApi = {
@@ -89,6 +127,19 @@ export const invoiceApi = {
   getByOrder: (orderId) => api.get(`/invoices/order/${orderId}`),
   create: (data) => api.post('/invoices', data),
   update: (id, data) => api.put(`/invoices/${id}`, data),
+  download: (id) => api.get(`/invoices/${id}/download`, { responseType: 'blob' }),
+};
+
+export const downloadInvoiceFile = async (invoiceId, invoiceNumber) => {
+  const response = await invoiceApi.download(invoiceId);
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${invoiceNumber || `invoice-${invoiceId}`}.txt`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 };
 
 export const warrantyApi = {

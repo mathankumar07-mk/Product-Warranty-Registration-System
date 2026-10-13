@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { orderApi, invoiceApi } from '../services/api';
+import { orderApi, invoiceApi, downloadInvoiceFile } from '../services/api';
 
 export default function OrderDetails() {
   const { id } = useParams();
@@ -85,17 +85,29 @@ export default function OrderDetails() {
             {invoice ? (
               <div className="detail-meta-list">
                 <div>
-                  <span>Invoice ID</span>
-                  <strong>{invoice.id}</strong>
+                  <span>Invoice No</span>
+                  <strong>{invoice.invoice_number || invoice.id}</strong>
                 </div>
                 <div>
                   <span>Status</span>
-                  <strong>{invoice.status || 'Issued'}</strong>
+                  <strong>Issued</strong>
                 </div>
                 <div>
                   <span>Amount</span>
                   <strong>${invoice.total_amount || order.total_amount}</strong>
                 </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      await downloadInvoiceFile(invoice.id, invoice.invoice_number);
+                    } catch (err) {
+                      alert('Failed to download invoice');
+                    }
+                  }}
+                  className="btn btn-outline btn-sm"
+                >
+                  Download Invoice
+                </button>
               </div>
             ) : (
               <p className="muted-text">Invoice is not available yet.</p>
@@ -106,15 +118,18 @@ export default function OrderDetails() {
         <div className="detail-section-card full-width">
           <h2>Items</h2>
           <div className="checkout-item-list">
-            {(order.items || []).map((item) => (
-              <div key={item.id} className="checkout-item">
-                <div>
-                  <strong>{item.product?.name || 'Product'}</strong>
-                  <span>{item.quantity} × ${item.product?.price || 0}</span>
+            {(order.items || []).map((item) => {
+              const unitPrice = Number(item.unit_price ?? item.product?.price ?? 0);
+              return (
+                <div key={item.id} className="checkout-item">
+                  <div>
+                    <strong>{item.product?.name || 'Product'}</strong>
+                    <span>{item.quantity} × ${unitPrice.toFixed(2)}</span>
+                  </div>
+                  <span>${(unitPrice * item.quantity).toFixed(2)}</span>
                 </div>
-                <span>${((item.product?.price || 0) * item.quantity).toFixed(2)}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

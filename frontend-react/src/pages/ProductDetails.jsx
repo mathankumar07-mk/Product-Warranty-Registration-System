@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { productApi } from '../services/api';
+import { productApi, warrantyApi } from '../services/api';
 import { useCart } from '../context/CartContext';
 
 export default function ProductDetails() {
   const { id } = useParams();
   const { addItem } = useCart();
   const [product, setProduct] = useState(null);
+  const [warrantyMonths, setWarrantyMonths] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -15,6 +16,12 @@ export default function ProductDetails() {
       try {
         const response = await productApi.get(id);
         setProduct(response.data);
+        try {
+          const policy = await warrantyApi.getPolicyByProduct(id);
+          setWarrantyMonths(policy.data.warranty_period_months);
+        } catch (policyErr) {
+          setWarrantyMonths(null);
+        }
       } catch (err) {
         setError('Failed to load product details');
       } finally {
@@ -83,7 +90,7 @@ export default function ProductDetails() {
             </div>
             <div className="detail-spec">
               <span>Warranty</span>
-              <strong>24 months</strong>
+              <strong>{warrantyMonths ? `${warrantyMonths} months` : 'Contact support'}</strong>
             </div>
             <div className="detail-spec">
               <span>Rating</span>

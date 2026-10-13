@@ -8,6 +8,11 @@ from app.services import admin_service
 router = APIRouter(prefix="/admins", tags=["admins"])
 
 
+@router.get("/me", response_model=AdminResponse)
+def get_me(admin: Admin = Depends(get_current_admin)):
+    return admin
+
+
 @router.post("", response_model=AdminResponse, status_code=status.HTTP_201_CREATED)
 def create_admin(data: AdminCreate, db: DBSession, admin: Admin = Depends(get_current_admin)):
     try:

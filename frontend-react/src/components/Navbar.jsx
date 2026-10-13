@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
 export default function Navbar() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { itemCount } = useCart();
   const location = useLocation();
 
@@ -36,6 +36,14 @@ export default function Navbar() {
               <Link to="/notifications" className={`navbar-link ${isActive('/notifications') ? 'active' : ''}`}>
                 Notifications
               </Link>
+              <Link to="/account" className={`navbar-link ${isActive('/account') ? 'active' : ''}`}>
+                Account
+              </Link>
+              {isAdmin && (
+                <Link to="/admin" className={`navbar-link ${isActive('/admin') ? 'active' : ''}`}>
+                  Admin
+                </Link>
+              )}
             </>
           )}
 
