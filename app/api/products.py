@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from decimal import Decimal
 
 from app.core.dependencies import DBSession, get_current_admin
@@ -55,6 +55,57 @@ def list_products(
         "page_size": page_size,
         "total_pages": (total + page_size - 1) // page_size,
     }
+
+
+@router.post("/import", response_model=dict)
+def import_products(
+    db: DBSession, admin: Admin = Depends(get_current_admin), file: UploadFile = File(...)
+):
+    """Validated CSV catalogue import.
+
+    Columns: name, model_number, price, stock_quantity, brand, category_id,
+    plus optional description, image_url, warranty_available (true/false).
+    Rows with duplicate model numbers are skipped; invalid rows are reported.
+    """
+    import csv
+    import io
+
+    try:
+        text = file.file.read().decode("utf-8-sig")
+    except Exception as error:
+        raise HTTPException(status_code=400, detail="Could not read uploaded file") from error
+    reader = csv.DictReader(io.StringIO(text))
+    required = {"name", "model_number", "price", "brand", "category_id"}
+    if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV must contain columns: {sorted(required)}",
+        )
+    created, skipped, errors = 0, 0, []
+    for line_no, row in enumerate(reader, start=2):
+        try:
+            data = ProductCreate(
+                category_id=int(row["category_id"]),
+                name=row["name"].strip(),
+                description=(row.get("description") or None),
+                price=Decimal(str(row["price"])),
+                stock_quantity=int(row.get("stock_quantity") or 0),
+                brand=row["brand"].strip(),
+                model_number=row["model_number"].strip(),
+                image_url=(row.get("image_url") or None),
+                warranty_available=str(row.get("warranty_available") or "").lower()
+                in {"true", "1", "yes"},
+            )
+            product_service.create_product(db, data)
+            created += 1
+        except ValueError as error:
+            if "already exists" in str(error):
+                skipped += 1
+            else:
+                errors.append({"row": line_no, "error": str(error)})
+        except Exception as error:
+            errors.append({"row": line_no, "error": str(error)})
+    return {"created": created, "skipped": skipped, "errors": errors}
 
 
 @router.get("/brands", response_model=list[str])

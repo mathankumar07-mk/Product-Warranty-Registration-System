@@ -39,6 +39,7 @@ class OrderUpdate(BaseModel):
 
 class OrderResponse(OrderBase):
     id: int
+    order_number: Optional[str] = None
     user_id: int
     status: str
     total_amount: Decimal

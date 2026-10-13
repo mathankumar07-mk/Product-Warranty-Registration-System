@@ -1,7 +1,12 @@
 from datetime import datetime, timezone, timedelta
+from uuid import uuid4
 from dateutil.relativedelta import relativedelta
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
+
+def _generate_warranty_number() -> str:
+    return f"WRT-{datetime.now(timezone.utc):%Y%m%d}-{uuid4().hex[:8].upper()}"
 
 from app.models.product import Product
 from app.models.purchase_invoice import PurchaseInvoice
@@ -16,18 +21,48 @@ from app.services.email_service import render_warranty_registration_email, send_
 
 
 def create_warranty_policy(db: Session, data: WarrantyPolicyCreate) -> WarrantyPolicy:
-    product = db.get(Product, data.product_id)
-    if not product:
-        raise LookupError("Product not found")
-    if not product.is_active:
-        raise ValueError("Cannot create a warranty policy for an inactive product")
-    if product.warranty_policy:
-        raise ValueError("Warranty policy already exists for this product")
+    if bool(data.product_id) == bool(data.category_id):
+        raise ValueError("Exactly one of product_id or category_id must be set")
+    if data.product_id:
+        from app.models.product import Product as _Product
+
+        product = db.get(_Product, data.product_id)
+        if not product:
+            raise LookupError("Product not found")
+        if not product.is_active:
+            raise ValueError("Cannot create a warranty policy for an inactive product")
+        if product.warranty_policy:
+            raise ValueError("Warranty policy already exists for this product")
+    else:
+        from app.models.category import Category as _Category
+
+        category = db.get(_Category, data.category_id)
+        if not category:
+            raise LookupError("Category not found")
+        existing = (
+            db.query(WarrantyPolicy).filter(WarrantyPolicy.category_id == data.category_id).first()
+        )
+        if existing:
+            raise ValueError("Warranty policy already exists for this category")
     policy = WarrantyPolicy(**data.model_dump())
     db.add(policy)
     db.commit()
     db.refresh(policy)
     return policy
+
+
+def get_applicable_policy(db: Session, product: Product) -> WarrantyPolicy:
+    """Product-specific policy first, then active category default."""
+    if product.warranty_policy and product.warranty_policy.is_active:
+        return product.warranty_policy
+    fallback = (
+        db.query(WarrantyPolicy)
+        .filter(WarrantyPolicy.category_id == product.category_id, WarrantyPolicy.is_active.is_(True))
+        .first()
+    )
+    if not fallback:
+        raise LookupError("No warranty policy for this product")
+    return fallback
 
 
 def get_warranty_policy(db: Session, policy_id: int) -> WarrantyPolicy:
@@ -44,6 +79,24 @@ def get_warranty_policy_by_product(db: Session, product_id: int) -> WarrantyPoli
     return policy
 
 
+def list_warranty_policies(db: Session, is_active: bool | None = None) -> list[WarrantyPolicy]:
+    query = db.query(WarrantyPolicy).order_by(WarrantyPolicy.created_at.desc())
+    if is_active is not None:
+        query = query.filter(WarrantyPolicy.is_active.is_(is_active))
+    return query.all()
+
+
+def search_registrations(
+    db: Session, status: str | None = None, product_id: int | None = None
+) -> list[WarrantyRegistration]:
+    query = db.query(WarrantyRegistration).order_by(WarrantyRegistration.created_at.desc())
+    if status is not None:
+        query = query.filter(WarrantyRegistration.warranty_status == WarrantyStatus(status))
+    if product_id is not None:
+        query = query.filter(WarrantyRegistration.product_id == product_id)
+    return query.all()
+
+
 def update_warranty_policy(db: Session, policy_id: int, data: WarrantyPolicyUpdate) -> WarrantyPolicy:
     policy = get_warranty_policy(db, policy_id)
     for key, value in data.model_dump(exclude_unset=True).items():
@@ -57,11 +110,19 @@ def register_warranty(db: Session, user_id: int, data: WarrantyRegistrationCreat
     policy = db.get(WarrantyPolicy, data.policy_id)
     if not policy:
         raise LookupError("Warranty policy not found")
+    if not policy.is_active:
+        raise ValueError("Warranty policy is inactive")
     product = db.get(Product, data.product_id)
     if not product:
         raise LookupError("Product not found")
-    if data.product_id != policy.product_id:
-        raise ValueError("Product does not match warranty policy")
+    if policy.product_id:
+        if data.product_id != policy.product_id:
+            raise ValueError("Product does not match warranty policy")
+    elif policy.category_id:
+        if product.category_id != policy.category_id:
+            raise ValueError("Product does not match warranty policy category")
+    # NOTE: warranty_available is informational/filters only; an active matching
+    # policy is the eligibility gate (keeps legacy products registrable).
     
     # Validate purchase invoice belongs to user and order
     if data.purchase_invoice_id:
@@ -90,10 +151,17 @@ def register_warranty(db: Session, user_id: int, data: WarrantyRegistrationCreat
     if warranty_start_date.tzinfo is None:
         warranty_start_date = warranty_start_date.replace(tzinfo=timezone.utc)
     
+    # External purchases require proof and start as PENDING_REVIEW.
+    is_external = purchase_source != PurchaseSource.COMPANY_WEBSITE
+    if is_external and not (data.proof_reference or data.purchase_invoice_id):
+        raise ValueError("External purchases require proof_reference or purchase_invoice_id")
+
     # Determine initial warranty status
     now = datetime.now(timezone.utc)
     if warranty_end_date < now:
         warranty_status = WarrantyStatus.EXPIRED
+    elif is_external:
+        warranty_status = WarrantyStatus.PENDING_REVIEW
     elif warranty_start_date > now:
         warranty_status = WarrantyStatus.PENDING
     else:
@@ -114,12 +182,14 @@ def register_warranty(db: Session, user_id: int, data: WarrantyRegistrationCreat
             raise ValueError("Warranty already registered for this product and invoice")
     
     registration = WarrantyRegistration(
+        warranty_number=_generate_warranty_number(),
         policy_id=data.policy_id,
         user_id=user_id,
         product_id=data.product_id,
         purchase_invoice_id=data.purchase_invoice_id,
         serial_number=data.serial_number,
         purchase_source=purchase_source,
+        proof_reference=data.proof_reference,
         purchase_date=data.purchase_date,
         warranty_start_date=warranty_start_date,
         warranty_end_date=warranty_end_date,
@@ -217,7 +287,10 @@ def check_warranty_validity(db: Session, registration_id: int, user: User | None
         db.commit()
         db.refresh(registration)
         is_valid = False
-    elif warranty_start_date <= now <= warranty_end_date and registration.warranty_status != WarrantyStatus.ACTIVE:
+    elif (
+        warranty_start_date <= now <= warranty_end_date
+        and registration.warranty_status not in (WarrantyStatus.ACTIVE, WarrantyStatus.PENDING_REVIEW)
+    ):
         registration.warranty_status = WarrantyStatus.ACTIVE
         db.commit()
         db.refresh(registration)

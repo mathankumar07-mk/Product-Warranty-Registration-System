@@ -41,3 +41,5 @@ def update_order(order_id: int, data: OrderUpdate, db: DBSession, admin: Admin =
         raise HTTPException(status_code=400, detail="No valid fields to update")
     except LookupError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error

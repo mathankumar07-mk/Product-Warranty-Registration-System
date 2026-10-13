@@ -13,6 +13,12 @@ def list_notifications(db: DBSession, current_user: User = Depends(get_current_u
     return notification_service.list_notifications(db, current_user, unread_only)
 
 
+@router.put("/read-all", response_model=dict)
+def mark_all_as_read(db: DBSession, current_user: User = Depends(get_current_user)):
+    count = notification_service.mark_all_as_read(db, current_user)
+    return {"marked_read": count}
+
+
 @router.put("/{notification_id}/read", response_model=NotificationResponse)
 def mark_as_read(notification_id: int, db: DBSession, current_user: User = Depends(get_current_user)):
     try:
@@ -20,9 +26,3 @@ def mark_as_read(notification_id: int, db: DBSession, current_user: User = Depen
     except LookupError as error:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail=str(error)) from error
-
-
-@router.put("/read-all", response_model=dict)
-def mark_all_as_read(db: DBSession, current_user: User = Depends(get_current_user)):
-    count = notification_service.mark_all_as_read(db, current_user)
-    return {"marked_read": count}

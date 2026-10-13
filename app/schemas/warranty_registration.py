@@ -9,6 +9,7 @@ class WarrantyRegistrationBase(BaseModel):
     serial_number: str = Field(min_length=1, max_length=120)
     purchase_invoice_id: Optional[int] = None
     purchase_source: str = Field(min_length=1, max_length=50)
+    proof_reference: Optional[str] = Field(default=None, max_length=255)
     purchase_date: datetime
 
 
@@ -17,12 +18,15 @@ class WarrantyRegistrationCreate(WarrantyRegistrationBase):
 
 
 class WarrantyRegistrationUpdate(BaseModel):
-    warranty_status: Optional[str] = Field(default=None, pattern="^(PENDING|ACTIVE|EXPIRED|CANCELLED)$")
+    warranty_status: Optional[str] = Field(
+        default=None, pattern="^(PENDING|PENDING_REVIEW|ACTIVE|EXPIRED|CANCELLED)$"
+    )
     notes: Optional[str] = None
 
 
 class WarrantyRegistrationResponse(WarrantyRegistrationBase):
     id: int
+    warranty_number: Optional[str] = None
     user_id: int
     warranty_start_date: datetime
     warranty_end_date: datetime

@@ -20,6 +20,11 @@ def create_policy(data: WarrantyPolicyCreate, db: DBSession, admin: Admin = Depe
         raise HTTPException(status_code=409, detail=str(error)) from error
 
 
+@router.get("/policies", response_model=list[WarrantyPolicyResponse])
+def list_policies(db: DBSession, is_active: bool | None = None):
+    return warranty_service.list_warranty_policies(db, is_active)
+
+
 @router.get("/policies/{policy_id}", response_model=WarrantyPolicyResponse)
 def get_policy(policy_id: int, db: DBSession):
     try:
@@ -57,6 +62,16 @@ def register_warranty(data: WarrantyRegistrationCreate, db: DBSession, current_u
 @router.get("/registrations", response_model=list[WarrantyRegistrationResponse])
 def list_my_registrations(db: DBSession, current_user: User = Depends(get_current_user)):
     return warranty_service.list_user_registrations(db, current_user.id)
+
+
+@router.get("/registrations/search", response_model=list[WarrantyRegistrationResponse])
+def search_registrations(
+    db: DBSession,
+    admin: Admin = Depends(get_current_admin),
+    status: str | None = None,
+    product_id: int | None = None,
+):
+    return warranty_service.search_registrations(db, status, product_id)
 
 
 @router.get("/registrations/{registration_id}", response_model=WarrantyRegistrationResponse)

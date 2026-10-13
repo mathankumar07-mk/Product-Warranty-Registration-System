@@ -32,6 +32,7 @@ class Payment(Base):
     status = Column(Enum(PaymentStatus), nullable=False, default=PaymentStatus.pending)
     method = Column(Enum(PaymentMethod), nullable=False)
     transaction_id = Column(String(120), nullable=True, unique=True)
+    idempotency_key = Column(String(64), nullable=True, unique=True, index=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

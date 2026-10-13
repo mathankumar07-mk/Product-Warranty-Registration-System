@@ -22,6 +22,8 @@ def _get_token_identity(credentials: HTTPAuthorizationCredentials | None, *, adm
         payload = jwt.decode(credentials.credentials, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         if not isinstance(payload, dict):
             raise ValueError("Invalid token identity")
+        if payload.get("type", "access") != "access":
+            raise ValueError("Invalid token type")
         subject = payload.get("sub")
         if not isinstance(subject, str) or not subject.isdecimal() or payload.get("is_admin", False) is not admin:
             raise ValueError("Invalid token identity")

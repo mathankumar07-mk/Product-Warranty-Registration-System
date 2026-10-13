@@ -1,6 +1,11 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+from uuid import uuid4
 from sqlalchemy.orm import Session
+
+
+def _generate_order_number() -> str:
+    return f"ORD-{datetime.now(timezone.utc):%Y%m%d}-{uuid4().hex[:8].upper()}"
 
 from app.models.cart import Cart
 from app.models.cart_item import CartItem
@@ -51,6 +56,7 @@ def create_order(db: Session, user: User, data: OrderCreate) -> Order:
     for product, quantity in products:
         product.stock_quantity -= quantity
     order = Order(
+        order_number=_generate_order_number(),
         user_id=user.id,
         total_amount=total,
         shipping_address_id=data.shipping_address_id,

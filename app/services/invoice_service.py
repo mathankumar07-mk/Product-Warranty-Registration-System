@@ -40,10 +40,32 @@ def create_invoice(
     )
     db.add(invoice)
     db.flush()
+    invoice.file_path = _write_invoice_file(invoice, order)
     if commit:
         db.commit()
         db.refresh(invoice)
     return invoice
+
+
+def _write_invoice_file(invoice: PurchaseInvoice, order: Order) -> str:
+    import os
+
+    from app.core.config import UPLOAD_DIR
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    path = os.path.join(UPLOAD_DIR, f"{invoice.invoice_number}.txt")
+    lines = [
+        f"Invoice {invoice.invoice_number}",
+        f"Order #{order.id}",
+        f"Total: {invoice.total_amount}",
+        f"Tax: {invoice.tax_amount}",
+        "Items:",
+    ]
+    for item in order.items:
+        lines.append(f"- product {item.product_id} x{item.quantity} @ {item.unit_price}")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+    return path
 
 
 def get_invoice(db: Session, invoice_id: int, user: User | None = None) -> PurchaseInvoice:

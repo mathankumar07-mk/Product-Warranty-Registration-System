@@ -1,0 +1,39 @@
+# Changelog
+
+## Unreleased (backend completion)
+
+- Auth: refresh-token rotation + revocation (`RefreshToken` table),
+  `POST /auth/refresh|/logout`, `POST /auth/change-password`,
+  `POST /auth/forgot-password|/reset-password` (reset token returned
+  directly only when SMTP is unconfigured; never claims email sent).
+- Payments: `payment_gateway.py` abstraction (labelled sandbox adapter),
+  signature-verified `POST /payments/webhook`, `POST /payments/{id}/refund`
+  (admin), guarded status transitions, `Idempotency-Key` header support.
+- Invoices: auto-generated text file under `UPLOAD_DIR` plus
+  `GET /invoices/{id}/download` (owner-only).
+- Warranties: category-scoped policies with product-first selection order,
+  `GET /warranties/policies` list, external-purchase proof workflow
+  (`proof_reference`, `PENDING_REVIEW`), `GET /warranties/registrations/search`.
+- Admin: paginated `GET /admin/users|/orders|/payments`, broadcast
+  `POST /admin/notifications/broadcast`; catalogue `POST /products/import` CSV.
+- Migration `0002_extended_backend` (idempotent); 6 new tests in
+  `tests/test_extended.py`.
+
+## Previous
+
+- Fix `PUT /orders/{id}` to return 409 (not 500) on illegal transition / unpaid confirm.
+- Fix `PUT /notifications/read-all` route shadowing by defining static route first.
+- Add `GET /health` and `GET /ready` (+ `/api/v1` aliases) without removing legacy paths.
+- Add `/api/v1/*` dual-mount compatibility layer (`app/api/v1/api.py`) and `app/api/deps.py`.
+- Add `app/core/exceptions.py` and `app/core/logging.py`.
+- Add admin dashboard `GET /admin/dashboard` (revenue from completed payments only).
+- Migrate config to `pydantic-settings` with legacy constant exports; add
+  `APP_NAME/APP_ENV/DEBUG/FRONTEND_URL`; document MySQL-first `DATABASE_URL`.
+- Support `mysql+pymysql` (primary) while keeping Postgres/SQLite compat.
+- Additive schema: `orders.order_number/idempotency_key`,
+  `payments.idempotency_key`, `warranty_policies.is_active/updated_at`,
+  `warranty_registrations.warranty_number` (server-generated).
+- Add Alembic (`alembic.ini`, `migrations/` baseline) and docs
+  (`er-diagram`, `architecture`, `database-schema`, `api-contract`, `deployment`).
+- Harden `.gitignore`; update `requirements.txt` (`pydantic-settings`,
+  `pymysql`, `alembic`).

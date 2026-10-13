@@ -28,24 +28,26 @@ The active backend package is the root `app/` package so it runs with `uvicorn a
 
 ## Database Setup
 
-The project is configured for PostgreSQL using the values in the root `.env` file:
+MySQL is the primary database (`mysql+pymysql`). PostgreSQL and SQLite remain
+supported via `DATABASE_URL` for backward compatibility and isolated tests.
 
 ```env
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_NAME=product_warranty_db
-DB_USER=postgres
-DB_PASSWORD=postgres
+DATABASE_URL=mysql+pymysql://root:password@127.0.0.1:3306/product_warranty_db
 JWT_SECRET_KEY=change-this-secret-key
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```
 
-For local development, copy `.env.example` to `.env`. Set `DATABASE_URL` to override
-the PostgreSQL connection, for example `sqlite:///./local.db`. Set `CORS_ORIGINS`
-to a comma-separated list of trusted frontend origins. In production, set
-`ENVIRONMENT=production` and replace the development JWT secret with a long,
-random secret; the application refuses to start with the default JWT secret.
+For local development, copy `.env.example` to `.env`. `DATABASE_URL` overrides
+`DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` (legacy Postgres defaults still
+use the `postgresql+psycopg2` driver when `DB_PORT=5432`/`DB_USER=postgres`).
+SQLite example: `sqlite:///./local.db`. Set `CORS_ORIGINS` to a comma-separated
+list of trusted frontend origins. In production, set `ENVIRONMENT=production`
+(or `APP_ENV`) and replace the development JWT secret with a long, random
+secret (>=32 chars); the application refuses to start with the default secret.
+
+Migrations: `alembic upgrade head` (baseline `migrations/0001_baseline.py` is
+idempotent; app startup also ensures tables exist).
 
 ## Installation
 
@@ -87,13 +89,19 @@ The frontend will be available at `http://127.0.0.1:5173`.
 
 ## API Overview
 
-- Authentication: `/auth/register`, `/auth/login`, `/auth/me`
+All paths below also work under `/api/v1` (e.g. `/api/v1/orders`); bare paths
+are kept for backward compatibility.
+
+- Health: `/health`, `/ready`
+- Authentication: `/auth/register`, `/auth/login` (access + refresh), `/auth/refresh`, `/auth/logout`, `/auth/change-password`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/me`
 - Users and addresses: `/users`, `/addresses`
 - Categories and products: `/categories`, `/products`
-- Cart and orders: `/cart`, `/orders`
-- Payments and invoices: `/payments`, `/invoices`
-- Warranties: `/warranties`
+- Cart and orders: `/cart`, `/orders` (orders now expose server-generated `order_number`)
+- Payments and invoices: `/payments` (incl. `/webhook`, `/{id}/refund`, `Idempotency-Key`), `/invoices` (incl. `/{id}/download`)
+- Warranties: `/warranties` (registrations now expose `warranty_number`; policies have `is_active`; category fallback; external proof → `PENDING_REVIEW`)
 - Notifications: `/notifications`
+- Admin: `/admin/dashboard`, `/admin/users`, `/admin/orders`, `/admin/payments`, `/admin/notifications/broadcast`, `/admins`
+- Catalogue: `POST /products/import` (admin CSV)
 - Database health check: `/database-test`
 
 ## Authentication Flow

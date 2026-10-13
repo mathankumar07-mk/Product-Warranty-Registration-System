@@ -9,6 +9,7 @@ from app.models.order_item import OrderItem
 from app.models.payment import Payment
 from app.models.product import Product
 from app.models.purchase_invoice import PurchaseInvoice
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.models.warranty_policy import WarrantyPolicy
 from app.models.warranty_registration import WarrantyRegistration
@@ -25,6 +26,7 @@ __all__ = [
     "Payment",
     "Product",
     "PurchaseInvoice",
+    "RefreshToken",
     "User",
     "WarrantyPolicy",
     "WarrantyRegistration",
