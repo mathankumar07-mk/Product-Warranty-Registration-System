@@ -27,7 +27,7 @@ export default function Checkout() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/login', { state: { from: '/checkout' } });
       return;
     }
     if (!cart || !cart.items || cart.items.length === 0) {

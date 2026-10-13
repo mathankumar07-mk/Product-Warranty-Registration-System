@@ -20,7 +20,7 @@ export default function Cart() {
           <div className="empty-cart-box">
             <p className="eyebrow dark">Your cart</p>
             <h2>Please login to view your cart</h2>
-            <Link to="/login" className="btn btn-primary btn-large">Login</Link>
+            <Link to="/login" state={{ from: '/cart' }} className="btn btn-primary btn-large">Login</Link>
           </div>
         </div>
       </div>

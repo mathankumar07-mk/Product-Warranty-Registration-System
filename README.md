@@ -74,7 +74,7 @@ python -m scripts.create_admin
 To add the sample catalogue after PostgreSQL is configured, run:
 
 ```powershell
-python scripts/seed_products.py
+$env:PYTHONPATH='.'; python scripts/seed_products.py
 ```
 
 ## Run Frontend

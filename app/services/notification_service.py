@@ -53,19 +53,19 @@ def get_notification(db: Session, notification_id: int, user: User) -> Notificat
 def list_notifications(db: Session, user: User, unread_only: bool = False) -> list[Notification]:
     query = db.query(Notification).filter(Notification.user_id == user.id)
     if unread_only:
-        query = query.filter(Notification.is_read == 0)
+        query = query.filter(Notification.is_read.is_(False))
     return query.order_by(Notification.created_at.desc()).all()
 
 
 def mark_as_read(db: Session, notification_id: int, user: User) -> Notification:
     notification = get_notification(db, notification_id, user)
-    notification.is_read = 1
+    notification.is_read = True
     db.commit()
     db.refresh(notification)
     return notification
 
 
 def mark_all_as_read(db: Session, user: User) -> int:
-    count = db.query(Notification).filter(Notification.user_id == user.id, Notification.is_read == 0).update({Notification.is_read: 1})
+    count = db.query(Notification).filter(Notification.user_id == user.id, Notification.is_read.is_(False)).update({Notification.is_read: True})
     db.commit()
     return count

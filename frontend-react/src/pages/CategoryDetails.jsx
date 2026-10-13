@@ -14,16 +14,15 @@ export default function CategoryDetails() {
       try {
         const [categoryRes, productsRes] = await Promise.all([
           categoryApi.get(id),
-          productApi.list(),
+          // Server-side category filter (backend returns a paginated envelope).
+          productApi.list({ category_id: id }),
         ]);
 
-        const categoryData = categoryRes.data;
-        const filteredProducts = productsRes.data.filter((product) => product.category_id === Number(id));
-
-        setCategory(categoryData);
-        setProducts(filteredProducts);
+        const data = productsRes.data;
+        setCategory(categoryRes.data);
+        setProducts(Array.isArray(data) ? data : data.products || []);
       } catch (err) {
-        setError('Failed to load category details');
+        setError(err.response?.data?.detail || 'Failed to load category details');
       } finally {
         setLoading(false);
       }

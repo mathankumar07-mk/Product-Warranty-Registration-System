@@ -18,6 +18,14 @@
   `POST /admin/notifications/broadcast`; catalogue `POST /products/import` CSV.
 - Migration `0002_extended_backend` (idempotent); 6 new tests in
   `tests/test_extended.py`.
+- Postgres hardening: `0003_reconcile_columns` (backfill missing columns),
+  `0004_relax_vestigial_columns` (orphan NOT NULLs), `0005_relax_model_nullable`
+  (e.g. payments.transaction_id); `notifications.is_read` Integer → Boolean
+  with True/False service writes.
+- Frontend: server-side category filter, paginated product unwrapping,
+  warranty form fields/status display, invoice download, real policy months,
+  login redirect-back, refresh-token retry, forgot-password + account pages,
+  admin section with `GET /admins/me` role detection.
 
 ## Previous
 
