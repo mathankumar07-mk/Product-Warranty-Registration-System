@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Dashboard | Warranty Desk</title>
+	<link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="dashboard-page">
+	<header class="dashboard-header">
+		<a class="brand" href="dashboard.html">Warranty Desk</a>
+		<button id="logout-button" class="text-button" type="button">Sign out</button>
+	</header>
+
+	<main class="dashboard-main">
+		<section class="dashboard-welcome">
+			<p class="eyebrow">Your workspace</p>
+			<h1>Good to see you, <span id="user-name">there</span>.</h1>
+			<p>Keep your purchases, invoices, and warranty coverage in view.</p>
+		</section>
+
+		<section class="dashboard-grid" aria-label="Account sections">
+			<a class="dashboard-card card-featured" href="products.html">
+				<span class="card-number">01</span>
+				<h2>Explore products</h2>
+				<p>Browse products and find the details behind every model.</p>
+				<span class="card-arrow" aria-hidden="true">&#8594;</span>
+			</a>
+			<a class="dashboard-card" href="orders.html">
+				<span class="card-number">02</span>
+				<h2>Your orders</h2>
+				<p>Review order history and payment status.</p>
+				<span class="card-arrow" aria-hidden="true">&#8594;</span>
+			</a>
+			<a class="dashboard-card" href="warranties.html">
+				<span class="card-number">03</span>
+				<h2>Warranty cover</h2>
+				<p>Register products and track active coverage.</p>
+				<span class="card-arrow" aria-hidden="true">&#8594;</span>
+			</a>
+			<a class="dashboard-card" href="invoices.html">
+				<span class="card-number">04</span>
+				<h2>Invoices</h2>
+				<p>Keep purchase documents ready when you need them.</p>
+				<span class="card-arrow" aria-hidden="true">&#8594;</span>
+			</a>
+		</section>
+
+		<p id="dashboard-status" class="form-status" role="status" aria-live="polite"></p>
+	</main>
+	<script src="../js/api.js"></script>
+	<script src="../js/auth.js"></script>
+</body>
+</html>

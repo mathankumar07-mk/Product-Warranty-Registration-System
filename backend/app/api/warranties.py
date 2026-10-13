@@ -1,0 +1,83 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from app.core.dependencies import DBSession, get_current_admin, get_current_user
+from app.models.admin import Admin
+from app.models.user import User
+from app.schemas.warranty import WarrantyPolicyCreate, WarrantyPolicyResponse, WarrantyPolicyUpdate
+from app.schemas.warranty_registration import WarrantyRegistrationCreate, WarrantyRegistrationResponse, WarrantyRegistrationUpdate
+from app.services import warranty_service
+
+router = APIRouter(prefix="/warranties", tags=["warranties"])
+
+
+@router.post("/policies", response_model=WarrantyPolicyResponse, status_code=status.HTTP_201_CREATED)
+def create_policy(data: WarrantyPolicyCreate, db: DBSession, admin: Admin = Depends(get_current_admin)):
+    try:
+        return warranty_service.create_warranty_policy(db, data)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.get("/policies/{policy_id}", response_model=WarrantyPolicyResponse)
+def get_policy(policy_id: int, db: DBSession):
+    try:
+        return warranty_service.get_warranty_policy(db, policy_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.get("/policies/product/{product_id}", response_model=WarrantyPolicyResponse)
+def get_policy_by_product(product_id: int, db: DBSession):
+    try:
+        return warranty_service.get_warranty_policy_by_product(db, product_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.put("/policies/{policy_id}", response_model=WarrantyPolicyResponse)
+def update_policy(policy_id: int, data: WarrantyPolicyUpdate, db: DBSession, admin: Admin = Depends(get_current_admin)):
+    try:
+        return warranty_service.update_warranty_policy(db, policy_id, data)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post("/register", response_model=WarrantyRegistrationResponse, status_code=status.HTTP_201_CREATED)
+def register_warranty(data: WarrantyRegistrationCreate, db: DBSession, current_user: User = Depends(get_current_user)):
+    try:
+        return warranty_service.register_warranty(db, current_user.id, data)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.get("/registrations", response_model=list[WarrantyRegistrationResponse])
+def list_my_registrations(db: DBSession, current_user: User = Depends(get_current_user)):
+    return warranty_service.list_user_registrations(db, current_user.id)
+
+
+@router.get("/registrations/{registration_id}", response_model=WarrantyRegistrationResponse)
+def get_registration(registration_id: int, db: DBSession, current_user: User = Depends(get_current_user)):
+    try:
+        return warranty_service.get_registration(db, registration_id, current_user)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.put("/registrations/{registration_id}", response_model=WarrantyRegistrationResponse)
+def update_registration(registration_id: int, data: WarrantyRegistrationUpdate, db: DBSession, admin: Admin = Depends(get_current_admin)):
+    try:
+        return warranty_service.update_registration_status(db, registration_id, data)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.get("/registrations/{registration_id}/validity")
+def check_validity(registration_id: int, db: DBSession, current_user: User = Depends(get_current_user)):
+    try:
+        return warranty_service.check_warranty_validity(db, registration_id, current_user)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error

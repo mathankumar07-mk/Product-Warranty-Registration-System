@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Sign in | Warranty Desk</title>
+	<link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="auth-page">
+	<main class="auth-shell">
+		<section class="auth-intro" aria-labelledby="page-title">
+			<a class="brand" href="../index.html">Warranty Desk</a>
+			<div class="intro-copy">
+				<p class="eyebrow">Product care, kept close</p>
+				<h1 id="page-title">Keep every purchase covered.</h1>
+				<p class="intro-text">Sign in to manage your products, invoices, and warranty registrations in one calm workspace.</p>
+			</div>
+			<p class="intro-meta">Mini E-Commerce and Product Warranty Registration System</p>
+		</section>
+
+		<section class="auth-panel" aria-labelledby="login-heading">
+			<div class="panel-heading">
+				<p class="eyebrow">Welcome back</p>
+				<h2 id="login-heading">Sign in to your account</h2>
+				<p>Use the email connected to your account.</p>
+			</div>
+
+			<form id="login-form" class="auth-form">
+				<label for="email">Email address</label>
+				<input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+
+				<label for="password">Password</label>
+				<input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+
+				<button type="submit">Sign in <span aria-hidden="true">&#8594;</span></button>
+				<p id="login-status" class="form-status" role="status" aria-live="polite"></p>
+			</form>
+
+			<p class="panel-footer">New here? <a href="register.html">Create an account</a></p>
+		</section>
+	</main>
+	<script src="../js/api.js"></script>
+	<script src="../js/auth.js"></script>
+</body>
+</html>
