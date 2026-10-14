@@ -9,6 +9,11 @@ from app.services import invoice_service
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
 
+@router.get("", response_model=list[PurchaseInvoiceResponse])
+def list_invoices(db: DBSession, current_user: User = Depends(get_current_user)):
+    return invoice_service.list_user_invoices(db, current_user)
+
+
 @router.post("", response_model=PurchaseInvoiceResponse, status_code=status.HTTP_201_CREATED)
 def create_invoice(data: PurchaseInvoiceCreate, db: DBSession, admin: Admin = Depends(get_current_admin)):
     try:
@@ -35,6 +40,14 @@ def get_invoice_by_order(order_id: int, db: DBSession, current_user: User = Depe
         raise HTTPException(status_code=404, detail=str(error)) from error
 
 
+@router.get("/by-number/{invoice_number}", response_model=PurchaseInvoiceResponse)
+def get_invoice_by_number(invoice_number: str, db: DBSession, current_user: User = Depends(get_current_user)):
+    try:
+        return invoice_service.get_invoice_by_number(db, invoice_number, current_user)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
 @router.put("/{invoice_id}", response_model=PurchaseInvoiceResponse)
 def update_invoice(invoice_id: int, data: PurchaseInvoiceUpdate, db: DBSession, admin: Admin = Depends(get_current_admin)):
     try:
@@ -45,6 +58,7 @@ def update_invoice(invoice_id: int, data: PurchaseInvoiceUpdate, db: DBSession, 
 
 @router.get("/{invoice_id}/download")
 def download_invoice(invoice_id: int, db: DBSession, current_user: User = Depends(get_current_user)):
+    import mimetypes
     import os
 
     from fastapi.responses import FileResponse
@@ -55,4 +69,6 @@ def download_invoice(invoice_id: int, db: DBSession, current_user: User = Depend
         raise HTTPException(status_code=404, detail=str(error)) from error
     if not invoice.file_path or not os.path.isfile(invoice.file_path):
         raise HTTPException(status_code=404, detail="Invoice file not available")
-    return FileResponse(invoice.file_path, filename=f"{invoice.invoice_number}.txt")
+    filename = os.path.basename(invoice.file_path)
+    media_type, _ = mimetypes.guess_type(filename)
+    return FileResponse(invoice.file_path, filename=filename, media_type=media_type or "application/octet-stream")

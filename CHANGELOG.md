@@ -26,6 +26,10 @@
   warranty form fields/status display, invoice download, real policy months,
   login redirect-back, refresh-token retry, forgot-password + account pages,
   admin section with `GET /admins/me` role detection.
+- Audit fixes: `VITE_API_URL` env for API base (`frontend-react/.env.example`),
+  `/dashboard` alias route, real stdlib-generated PDF invoices
+  (`invoice_pdf.py`, Content-Disposition + CORS expose), invoice filename from
+  stored path, Home hero free of fake product/stats claims.
 
 ## Previous
 

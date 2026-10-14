@@ -31,26 +31,26 @@ export default function Home() {
 
           <div className="hero-stats">
             <div>
-              <strong>12k+</strong>
-              <span>Happy buyers</span>
+              <strong>Secure</strong>
+              <span>Protected checkout</span>
             </div>
             <div>
-              <strong>4.9/5</strong>
-              <span>Average rating</span>
+              <strong>Tracked</strong>
+              <span>Orders & invoices</span>
             </div>
             <div>
-              <strong>24/7</strong>
-              <span>Warranty support</span>
+              <strong>Covered</strong>
+              <span>Warranty registration</span>
             </div>
           </div>
         </div>
 
         <div className="hero-visual">
           <div className="floating-card card-top">
-            <span className="card-label">Best seller</span>
-            <h3>NoiseGuard Pro</h3>
-            <p>Premium wireless audio</p>
-            <strong>$129</strong>
+            <span className="card-label">Catalogue</span>
+            <h3>Shop the collection</h3>
+            <p>Live products & prices</p>
+            <strong><Link to="/products">Browse →</Link></strong>
           </div>
 
           <div className="hero-product-panel">
@@ -58,9 +58,9 @@ export default function Home() {
           </div>
 
           <div className="floating-card card-bottom">
-            <span className="card-label success">Warranty active</span>
-            <p>24 months coverage</p>
-            <strong>Protected</strong>
+            <span className="card-label success">Warranty ready</span>
+            <p>Policy-based coverage</p>
+            <strong><Link to="/warranties">Register →</Link></strong>
           </div>
         </div>
       </section>

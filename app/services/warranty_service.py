@@ -237,8 +237,13 @@ def get_registration(db: Session, registration_id: int, user: User | None = None
     return registration
 
 
-def list_user_registrations(db: Session, user_id: int) -> list[WarrantyRegistration]:
-    return db.query(WarrantyRegistration).filter(WarrantyRegistration.user_id == user_id).order_by(WarrantyRegistration.created_at.desc()).all()
+def list_user_registrations(
+    db: Session, user_id: int, status: WarrantyStatus | None = None
+) -> list[WarrantyRegistration]:
+    query = db.query(WarrantyRegistration).filter(WarrantyRegistration.user_id == user_id)
+    if status is not None:
+        query = query.filter(WarrantyRegistration.warranty_status == status)
+    return query.order_by(WarrantyRegistration.created_at.desc()).all()
 
 
 def update_registration_status(db: Session, registration_id: int, data: WarrantyRegistrationUpdate) -> WarrantyRegistration:

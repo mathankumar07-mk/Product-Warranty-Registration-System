@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { warrantyApi } from '../services/api';
+import { warrantyApi, invoiceApi, orderApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function Warranties() {
@@ -8,6 +8,9 @@ export default function Warranties() {
   const [registrations, setRegistrations] = useState([]);
   const [policies, setPolicies] = useState([]);
   const [policiesLoading, setPoliciesLoading] = useState(false);
+  // User's own invoices with the product IDs each order contains.
+  const [invoices, setInvoices] = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showRegister, setShowRegister] = useState(false);
@@ -27,15 +30,24 @@ export default function Warranties() {
     }
   }, [isAuthenticated]);
 
-  const loadRegistrations = async () => {
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const loadRegistrations = async (status = statusFilter) => {
     try {
-      const response = await warrantyApi.listRegistrations();
+      const params = status ? { status } : {};
+      const response = await warrantyApi.listRegistrations(params);
       setRegistrations(response.data);
     } catch (err) {
       setError('Failed to load registrations');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStatusFilter = (value) => {
+    setStatusFilter(value);
+    setLoading(true);
+    loadRegistrations(value);
   };
 
   const loadPolicies = async () => {
@@ -53,7 +65,44 @@ export default function Warranties() {
   const openRegister = () => {
     setShowRegister(true);
     loadPolicies();
+    loadInvoices();
   };
+
+  const loadInvoices = async () => {
+    setInvoicesLoading(true);
+    try {
+      const response = await invoiceApi.list();
+      const withItems = await Promise.all(
+        response.data.map(async (inv) => {
+          try {
+            const order = await orderApi.get(inv.order_id);
+            const items = order.data.items || [];
+            return {
+              ...inv,
+              productIds: items.map((item) => item.product_id),
+              productNames: [...new Set(items.map((item) => item.product?.name || `Product #${item.product_id}`))],
+            };
+          } catch (err) {
+            return { ...inv, productIds: [], productNames: [] };
+          }
+        })
+      );
+      setInvoices(withItems);
+    } catch (err) {
+      setError('Failed to load your invoices');
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+
+  // Invoices shown for the currently selected product. Picking from this list
+  // makes "invoice does not contain the product" impossible by construction.
+  const matchingInvoices = registerForm.product_id
+    ? invoices.filter((inv) => inv.productIds.includes(Number(registerForm.product_id)))
+    : invoices;
+
+  const invoiceLabel = (inv) =>
+    `${inv.invoice_number} · ${(inv.productNames || []).join(', ') || `Order #${inv.order_id}`}`;
 
   const handlePolicyChange = (policyId) => {
     const policy = policies.find((p) => String(p.id) === String(policyId));
@@ -73,6 +122,21 @@ export default function Warranties() {
     return `#${policy.id} · ${scope} · ${policy.warranty_period_months} months`;
   };
 
+  // Invoices have text numbers (INV-…​) but the API links by internal integer
+  // ID. Accept either: digits go through as an ID, anything else is resolved
+  // via GET /invoices/by-number/ before submitting.
+  const resolveInvoiceId = async (raw) => {
+    const value = raw.trim();
+    if (!value) return null;
+    if (/^\d+$/.test(value)) return Number(value);
+    try {
+      const response = await invoiceApi.getByNumber(value);
+      return response.data.id;
+    } catch (err) {
+      throw new Error(`Invoice "${value}" was not found on your orders.`);
+    }
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
@@ -84,8 +148,9 @@ export default function Warranties() {
         purchase_source: registerForm.purchase_source,
         purchase_date: new Date(registerForm.purchase_date).toISOString(),
       };
-      if (registerForm.purchase_invoice_id.trim()) {
-        payload.purchase_invoice_id = Number(registerForm.purchase_invoice_id);
+      const invoiceId = await resolveInvoiceId(registerForm.purchase_invoice_id);
+      if (invoiceId !== null) {
+        payload.purchase_invoice_id = invoiceId;
       }
       if (registerForm.proof_reference.trim()) {
         payload.proof_reference = registerForm.proof_reference.trim();
@@ -136,9 +201,19 @@ export default function Warranties() {
     <div className="page warranties-page">
       <div className="page-header">
         <h1>My Warranty Registrations</h1>
-        <button onClick={openRegister} className="btn btn-primary">
-          Register New Warranty
-        </button>
+        <div className="page-header-actions">
+          <select value={statusFilter} onChange={(e) => handleStatusFilter(e.target.value)} aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="PENDING_REVIEW">Pending review</option>
+            <option value="ACTIVE">Active</option>
+            <option value="EXPIRED">Expired</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+          <button onClick={openRegister} className="btn btn-primary">
+            Register New Warranty
+          </button>
+        </div>
       </div>
 
       {showRegister && (
@@ -192,12 +267,28 @@ export default function Warranties() {
                 />
               </div>
               <div className="form-group">
-                <label>Purchase Invoice ID (optional)</label>
-                <input
-                  type="number"
-                  value={registerForm.purchase_invoice_id}
-                  onChange={(e) => setRegisterForm({ ...registerForm, purchase_invoice_id: e.target.value })}
-                />
+                <label>Purchase Invoice (optional)</label>
+                {invoicesLoading ? (
+                  <p>Loading your invoices…</p>
+                ) : (
+                  <select
+                    value={registerForm.purchase_invoice_id}
+                    onChange={(e) => setRegisterForm({ ...registerForm, purchase_invoice_id: e.target.value })}
+                  >
+                    <option value="">No invoice (store purchase on file)</option>
+                    {matchingInvoices.map((inv) => (
+                      <option key={inv.id} value={inv.invoice_number}>
+                        {invoiceLabel(inv)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {registerForm.policy_id && registerForm.product_id && !invoicesLoading && matchingInvoices.length === 0 && invoices.length > 0 && (
+                  <p className="muted-text">
+                    None of your invoices contain this product. Register without an invoice,
+                    buy it first, or pick another policy.
+                  </p>
+                )}
               </div>
               <div className="form-group">
                 <label>Purchase Source</label>

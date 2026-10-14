@@ -60,8 +60,14 @@ def register_warranty(data: WarrantyRegistrationCreate, db: DBSession, current_u
 
 
 @router.get("/registrations", response_model=list[WarrantyRegistrationResponse])
-def list_my_registrations(db: DBSession, current_user: User = Depends(get_current_user)):
-    return warranty_service.list_user_registrations(db, current_user.id)
+def list_my_registrations(
+    db: DBSession, current_user: User = Depends(get_current_user), status: str | None = None
+):
+    try:
+        warranty_status = warranty_service.WarrantyStatus(status) if status is not None else None
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=f"Invalid status: {status}") from error
+    return warranty_service.list_user_registrations(db, current_user.id, warranty_status)
 
 
 @router.get("/registrations/search", response_model=list[WarrantyRegistrationResponse])

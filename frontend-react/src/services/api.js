@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+// Configured via frontend-react/.env (VITE_API_URL) in production builds;
+// falls back to the local backend for development.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -123,8 +125,10 @@ export const paymentApi = {
 };
 
 export const invoiceApi = {
+  list: () => api.get('/invoices'),
   get: (id) => api.get(`/invoices/${id}`),
   getByOrder: (orderId) => api.get(`/invoices/order/${orderId}`),
+  getByNumber: (invoiceNumber) => api.get(`/invoices/by-number/${encodeURIComponent(invoiceNumber)}`),
   create: (data) => api.post('/invoices', data),
   update: (id, data) => api.put(`/invoices/${id}`, data),
   download: (id) => api.get(`/invoices/${id}/download`, { responseType: 'blob' }),
@@ -132,10 +136,14 @@ export const invoiceApi = {
 
 export const downloadInvoiceFile = async (invoiceId, invoiceNumber) => {
   const response = await invoiceApi.download(invoiceId);
+  const disposition = response.headers?.['content-disposition'] || '';
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  const fallbackExt = invoiceNumber?.endsWith('.pdf') ? '' : '.pdf';
+  const filename = match?.[1] || `${invoiceNumber || `invoice-${invoiceId}`}${fallbackExt}`;
   const url = window.URL.createObjectURL(new Blob([response.data]));
   const link = document.createElement('a');
   link.href = url;
-  link.setAttribute('download', `${invoiceNumber || `invoice-${invoiceId}`}.txt`);
+  link.setAttribute('download', filename);
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -149,7 +157,7 @@ export const warrantyApi = {
   getPolicyByProduct: (productId) => api.get(`/warranties/policies/product/${productId}`),
   updatePolicy: (id, data) => api.put(`/warranties/policies/${id}`, data),
   register: (data) => api.post('/warranties/register', data),
-  listRegistrations: () => api.get('/warranties/registrations'),
+  listRegistrations: (params = {}) => api.get('/warranties/registrations', { params }),
   getRegistration: (id) => api.get(`/warranties/registrations/${id}`),
   updateRegistration: (id, data) => api.put(`/warranties/registrations/${id}`, data),
   checkValidity: (id) => api.get(`/warranties/registrations/${id}/validity`),

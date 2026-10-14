@@ -167,6 +167,8 @@ def test_webhook_and_invoice_download():
     assert invoice.status_code == 200
     download = client.get(f"/invoices/{invoice.json()['id']}/download", headers=headers)
     assert download.status_code == 200
+    assert download.content.startswith(b"%PDF")
+    assert "pdf" in download.headers["content-type"]
     assert client.get(f"/invoices/{invoice.json()['id']}/download", headers=other).status_code == 404
 
 
@@ -291,3 +293,140 @@ def test_warranty_policy_selection_and_validation():
     )
     assert ok.status_code == 201
     assert ok.json()["warranty_number"]
+
+
+def test_invoice_list_and_product_mismatch():
+    """GET /invoices lists only the caller's invoices; pairing an invoice with
+    a product from a different order is a 409 with a clear message."""
+    owner, _, _, _ = register_and_login("Mismatch Owner")
+    other, _, _, _ = register_and_login("Mismatch Stranger")
+    admin = make_admin()
+    product_a, _ = make_product()
+    product_b, _ = make_product()
+    for pid in (product_a, product_b):
+        assert client.post(
+            "/warranties/policies",
+            headers=admin,
+            json={"product_id": pid, "warranty_period_months": 12, "terms": "T"},
+        ).status_code == 201
+    policy_a = client.get(f"/warranties/policies/product/{product_a}").json()
+    policy_b = client.get(f"/warranties/policies/product/{product_b}").json()
+
+    # Owner buys product A only.
+    db = TestingSessionLocal()
+    try:
+        from app.models.user import User
+        from app.models.cart import Cart
+        from app.models.cart_item import CartItem
+
+        me = client.get("/auth/me", headers=owner).json()
+        cart = Cart(user_id=me["id"])
+        db.add(cart)
+        db.flush()
+        db.add(CartItem(cart_id=cart.id, product_id=product_a, quantity=1))
+        db.commit()
+    finally:
+        db.close()
+    order_id = client.post("/orders", headers=owner, json={}).json()["id"]
+    total = client.get(f"/orders/{order_id}", headers=owner).json()["total_amount"]
+    payment_id = client.post(
+        "/payments", headers=owner,
+        json={"order_id": order_id, "amount": total, "method": "card"},
+    ).json()["id"]
+    client.post(f"/payments/{payment_id}/simulate", headers=owner, params={"success": True})
+    invoice = client.get(f"/invoices/order/{order_id}", headers=owner).json()
+
+    # List shows the owner's invoice; strangers see none of it.
+    mine = client.get("/invoices", headers=owner).json()
+    assert any(i["id"] == invoice["id"] for i in mine)
+    assert all(i["id"] != invoice["id"] for i in client.get("/invoices", headers=other).json())
+
+    # Pairing that invoice (product A only) with product B's policy is
+    # rejected by the invoice check, purchase intact.
+    bad = client.post(
+        "/warranties/register",
+        headers=owner,
+        json={
+            "policy_id": policy_b["id"],
+            "product_id": product_b,
+            "serial_number": f"MM-{uuid4().hex}",
+            "purchase_source": "Company Website",
+            "purchase_date": "2026-09-01T10:00:00",
+            "purchase_invoice_id": invoice["id"],
+        },
+    )
+    assert bad.status_code == 409
+    assert "does not contain" in bad.json()["detail"]
+
+    # Correct pairing succeeds.
+    good = client.post(
+        "/warranties/register",
+        headers=owner,
+        json={
+            "policy_id": policy_a["id"],
+            "product_id": product_a,
+            "serial_number": f"MM-{uuid4().hex}",
+            "purchase_source": "Company Website",
+            "purchase_date": "2026-09-01T10:00:00",
+            "purchase_invoice_id": invoice["id"],
+        },
+    )
+    assert good.status_code == 201
+
+
+def test_invoice_lookup_by_number_is_owner_scoped():
+    """Text invoice numbers (INV-…) resolve to internal IDs for the owner only."""
+    owner, _, _, _ = register_and_login("Invoice Owner")
+    other, _, _, _ = register_and_login("Invoice Stranger")
+    admin = make_admin()
+    product_id, _ = make_product()
+    policy = client.post(
+        "/warranties/policies",
+        headers=admin,
+        json={"product_id": product_id, "warranty_period_months": 12, "terms": "T"},
+    ).json()
+
+    db = TestingSessionLocal()
+    try:
+        from app.models.user import User
+        from app.models.cart import Cart
+        from app.models.cart_item import CartItem
+
+        me = client.get("/auth/me", headers=owner).json()
+        cart = Cart(user_id=me["id"])
+        db.add(cart)
+        db.flush()
+        db.add(CartItem(cart_id=cart.id, product_id=product_id, quantity=1))
+        db.commit()
+    finally:
+        db.close()
+    order_id = client.post("/orders", headers=owner, json={}).json()["id"]
+    total = client.get(f"/orders/{order_id}", headers=owner).json()["total_amount"]
+    payment_id = client.post(
+        "/payments", headers=owner,
+        json={"order_id": order_id, "amount": total, "method": "card"},
+    ).json()["id"]
+    client.post(f"/payments/{payment_id}/simulate", headers=owner, params={"success": True})
+    number = client.get(f"/invoices/order/{order_id}", headers=owner).json()["invoice_number"]
+    assert number.startswith("INV-")
+
+    # Owner resolves the text number; strangers (and unknown numbers) get 404.
+    found = client.get(f"/invoices/by-number/{number}", headers=owner)
+    assert found.status_code == 200
+    assert client.get(f"/invoices/by-number/{number}", headers=other).status_code == 404
+    assert client.get("/invoices/by-number/INV-NOPE-0", headers=owner).status_code == 404
+
+    # Registration with the resolved internal ID succeeds.
+    regw = client.post(
+        "/warranties/register",
+        headers=owner,
+        json={
+            "policy_id": policy["id"],
+            "product_id": product_id,
+            "serial_number": f"INV-{uuid4().hex}",
+            "purchase_source": "Company Website",
+            "purchase_date": "2026-09-01T10:00:00",
+            "purchase_invoice_id": found.json()["id"],
+        },
+    )
+    assert regw.status_code == 201

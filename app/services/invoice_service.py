@@ -51,21 +51,34 @@ def _write_invoice_file(invoice: PurchaseInvoice, order: Order) -> str:
     import os
 
     from app.core.config import UPLOAD_DIR
+    from app.services.invoice_pdf import render_invoice_pdf
 
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    path = os.path.join(UPLOAD_DIR, f"{invoice.invoice_number}.txt")
-    lines = [
+    path = os.path.join(UPLOAD_DIR, f"{invoice.invoice_number}.pdf")
+    title = [
         f"Invoice {invoice.invoice_number}",
-        f"Order #{order.id}",
-        f"Total: {invoice.total_amount}",
-        f"Tax: {invoice.tax_amount}",
-        "Items:",
+        f"Order #{order.id} (Order No: {order.order_number or order.id})",
+        f"Date: {invoice.created_at.isoformat()}",
     ]
-    for item in order.items:
-        lines.append(f"- product {item.product_id} x{item.quantity} @ {item.unit_price}")
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write("\n".join(lines) + "\n")
+    items = [
+        f"Product {item.product_id} x{item.quantity} @ {item.unit_price} = "
+        f"{item.unit_price * item.quantity}"
+        for item in order.items
+    ]
+    totals = [f"Tax: {invoice.tax_amount}", f"Total: {invoice.total_amount}"]
+    with open(path, "wb") as fh:
+        fh.write(render_invoice_pdf(title, items, totals))
     return path
+
+
+def list_user_invoices(db: Session, user: User) -> list[PurchaseInvoice]:
+    return (
+        db.query(PurchaseInvoice)
+        .join(Order)
+        .filter(Order.user_id == user.id)
+        .order_by(PurchaseInvoice.created_at.desc())
+        .all()
+    )
 
 
 def get_invoice(db: Session, invoice_id: int, user: User | None = None) -> PurchaseInvoice:
@@ -77,6 +90,19 @@ def get_invoice(db: Session, invoice_id: int, user: User | None = None) -> Purch
 
 def get_invoice_by_order(db: Session, order_id: int, user: User | None = None) -> PurchaseInvoice:
     query = db.query(PurchaseInvoice).join(Order).filter(PurchaseInvoice.order_id == order_id)
+    if user:
+        query = query.filter(Order.user_id == user.id)
+    invoice = query.first()
+    if not invoice:
+        raise LookupError("Invoice not found")
+    return invoice
+
+
+def get_invoice_by_number(db: Session, invoice_number: str, user: User | None = None) -> PurchaseInvoice:
+    """Resolve a human-readable invoice number (e.g. INV-20261013-E6324947)
+    to its internal record. Ownership-scoped: other customers' invoices
+    read as not found."""
+    query = db.query(PurchaseInvoice).join(Order).filter(PurchaseInvoice.invoice_number == invoice_number)
     if user:
         query = query.filter(Order.user_id == user.id)
     invoice = query.first()
