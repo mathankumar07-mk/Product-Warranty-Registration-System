@@ -234,3 +234,60 @@ def test_admin_lists_broadcast_and_csv_import():
     assert imported.status_code == 200
     assert imported.json()["created"] == 1
     assert len(imported.json()["errors"]) == 1
+
+
+def test_warranty_policy_selection_and_validation():
+    """Covers the 'Warranty policy not found' report: genuine 404s, inactive
+    policies, product mismatches, and the policies list the UI dropdown uses."""
+    headers, _, _, _ = register_and_login("Policy Validation User")
+    admin = make_admin()
+    product_id, _ = make_product()
+
+    # Policies list starts empty and is publicly readable (powers the dropdown).
+    assert client.get("/warranties/policies").json() == []
+
+    # Admin creates a product-scoped policy through the API.
+    created = client.post(
+        "/warranties/policies",
+        headers=admin,
+        json={"product_id": product_id, "warranty_period_months": 12, "terms": "Standard cover"},
+    )
+    assert created.status_code == 201
+    policy_id = created.json()["id"]
+    assert any(p["id"] == policy_id for p in client.get("/warranties/policies").json())
+
+    base = {
+        "product_id": product_id,
+        "serial_number": f"POL-{uuid4().hex}",
+        "purchase_source": "Company Website",
+        "purchase_date": "2026-09-01T10:00:00",
+    }
+    # Unknown policy id -> genuine 404.
+    missing = client.post(
+        "/warranties/register", headers=headers, json={**base, "policy_id": 999999}
+    )
+    assert missing.status_code == 404
+    assert "not found" in missing.json()["detail"].lower()
+
+    # Policy for another product -> 409, never silently reassigned.
+    other_id, _ = make_product()
+    mismatch = client.post(
+        "/warranties/register", headers=headers, json={**base, "policy_id": policy_id, "product_id": other_id}
+    )
+    assert mismatch.status_code == 409
+
+    # Deactivating the policy makes registration 409 (not 404).
+    assert client.put(f"/warranties/policies/{policy_id}", headers=admin, json={"is_active": False}).status_code == 200
+    inactive = client.post(
+        "/warranties/register", headers=headers, json={**base, "policy_id": policy_id}
+    )
+    assert inactive.status_code == 409
+    assert "inactive" in inactive.json()["detail"].lower()
+
+    # Reactivated policy registers normally with a server-generated number.
+    assert client.put(f"/warranties/policies/{policy_id}", headers=admin, json={"is_active": True}).status_code == 200
+    ok = client.post(
+        "/warranties/register", headers=headers, json={**base, "policy_id": policy_id}
+    )
+    assert ok.status_code == 201
+    assert ok.json()["warranty_number"]

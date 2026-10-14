@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { warrantyApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function Warranties() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
   const [registrations, setRegistrations] = useState([]);
+  const [policies, setPolicies] = useState([]);
+  const [policiesLoading, setPoliciesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showRegister, setShowRegister] = useState(false);
@@ -33,6 +36,41 @@ export default function Warranties() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadPolicies = async () => {
+    setPoliciesLoading(true);
+    try {
+      const response = await warrantyApi.listPolicies();
+      setPolicies(response.data);
+    } catch (err) {
+      setError('Failed to load warranty policies');
+    } finally {
+      setPoliciesLoading(false);
+    }
+  };
+
+  const openRegister = () => {
+    setShowRegister(true);
+    loadPolicies();
+  };
+
+  const handlePolicyChange = (policyId) => {
+    const policy = policies.find((p) => String(p.id) === String(policyId));
+    setRegisterForm((prev) => ({
+      ...prev,
+      policy_id: policyId,
+      // A policy covers exactly one product (or one category); prefill it so
+      // the registration can never mismatch the policy.
+      product_id: policy?.product_id ? String(policy.product_id) : prev.product_id,
+    }));
+  };
+
+  const policyLabel = (policy) => {
+    const scope = policy.product_id
+      ? `Product #${policy.product_id}`
+      : `Category #${policy.category_id}`;
+    return `#${policy.id} · ${scope} · ${policy.warranty_period_months} months`;
   };
 
   const handleRegister = async (e) => {
@@ -98,7 +136,7 @@ export default function Warranties() {
     <div className="page warranties-page">
       <div className="page-header">
         <h1>My Warranty Registrations</h1>
-        <button onClick={() => setShowRegister(true)} className="btn btn-primary">
+        <button onClick={openRegister} className="btn btn-primary">
           Register New Warranty
         </button>
       </div>
@@ -108,24 +146,42 @@ export default function Warranties() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>Register Warranty</h3>
             <form onSubmit={handleRegister}>
-              <div className="form-group">
-                <label>Policy ID</label>
-                <input
-                  type="number"
-                  value={registerForm.policy_id}
-                  onChange={(e) => setRegisterForm({ ...registerForm, policy_id: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Product ID</label>
-                <input
-                  type="number"
-                  value={registerForm.product_id}
-                  onChange={(e) => setRegisterForm({ ...registerForm, product_id: e.target.value })}
-                  required
-                />
-              </div>
+              {policiesLoading ? (
+                <p>Loading policies…</p>
+              ) : policies.length === 0 ? (
+                <div className="alert alert-error">
+                  No warranty policies exist yet, so nothing can be registered.
+                  {isAdmin ? (
+                    <> Create one in <Link to="/admin/warranties">Admin → Warranties</Link>.</>
+                  ) : (
+                    <> Please ask support or an administrator to add a policy first.</>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="form-group">
+                    <label>Warranty Policy</label>
+                    <select
+                      value={registerForm.policy_id}
+                      onChange={(e) => handlePolicyChange(e.target.value)}
+                      required
+                    >
+                      <option value="">Select a policy…</option>
+                      {policies
+                        .filter((p) => p.is_active !== false)
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {policyLabel(p)}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Product ID (set by the selected policy)</label>
+                    <input type="number" value={registerForm.product_id} readOnly required />
+                  </div>
+                </>
+              )}
               <div className="form-group">
                 <label>Serial Number</label>
                 <input
@@ -192,7 +248,7 @@ export default function Warranties() {
       {registrations.length === 0 ? (
         <div className="empty-state">
           <p>No warranty registrations yet</p>
-          <button onClick={() => setShowRegister(true)} className="btn btn-primary">
+          <button onClick={openRegister} className="btn btn-primary">
             Register Your First Product
           </button>
         </div>

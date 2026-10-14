@@ -144,6 +144,7 @@ export const downloadInvoiceFile = async (invoiceId, invoiceNumber) => {
 
 export const warrantyApi = {
   createPolicy: (data) => api.post('/warranties/policies', data),
+  listPolicies: (params = {}) => api.get('/warranties/policies', { params }),
   getPolicy: (id) => api.get(`/warranties/policies/${id}`),
   getPolicyByProduct: (productId) => api.get(`/warranties/policies/product/${productId}`),
   updatePolicy: (id, data) => api.put(`/warranties/policies/${id}`, data),
