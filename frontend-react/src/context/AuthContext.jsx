@@ -46,6 +46,29 @@ export function AuthProvider({ children }) {
     return response.data;
   };
 
+  // Separate admin login: authenticates, then verifies admin privileges
+  // server-side via /admins/me. Customer tokens are rejected here and cleared.
+  const adminLogin = async (email, password) => {
+    const response = await authApi.login({ email, password });
+    localStorage.setItem('access_token', response.data.access_token);
+    if (response.data.refresh_token) {
+      localStorage.setItem('refresh_token', response.data.refresh_token);
+    }
+    try {
+      const adminResponse = await authApi.adminMe();
+      const adminUser = { ...adminResponse.data, role: 'admin' };
+      setUser(adminUser);
+      setLoading(false);
+      return adminUser;
+    } catch (error) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      setUser(null);
+      setLoading(false);
+      throw new Error('This account does not have admin access');
+    }
+  };
+
   const register = async (name, email, password, phone) => {
     const response = await authApi.register({ name, email, password, phone });
     return response.data;
@@ -69,6 +92,7 @@ export function AuthProvider({ children }) {
     user,
     loading,
     login,
+    adminLogin,
     register,
     logout,
     isAuthenticated: !!user,

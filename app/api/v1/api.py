@@ -13,6 +13,7 @@ from fastapi import APIRouter
 from app.api import (
     addresses_router,
     admin_dashboard_router,
+    admin_extended_router,
     admins_router,
     auth_router,
     carts_router,
@@ -35,6 +36,7 @@ for _router in (
     users_router,
     admins_router,
     admin_dashboard_router,
+    admin_extended_router,
     addresses_router,
     categories_router,
     products_router,

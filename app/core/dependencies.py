@@ -49,4 +49,6 @@ def get_current_admin(
     admin = db.get(Admin, _get_token_identity(credentials, admin=True))
     if not admin:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin not found")
+    if not getattr(admin, "is_active", True):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin account is deactivated")
     return admin

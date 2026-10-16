@@ -7,6 +7,7 @@ from app.core.config import CORS_ORIGINS
 from app.api import (
     addresses_router,
     admin_dashboard_router,
+    admin_extended_router,
     admins_router,
     auth_router,
     carts_router,
@@ -50,6 +51,7 @@ for router in (
     users_router,
     admins_router,
     admin_dashboard_router,
+    admin_extended_router,
     addresses_router,
     categories_router,
     products_router,

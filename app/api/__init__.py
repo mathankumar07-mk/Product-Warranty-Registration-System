@@ -1,5 +1,6 @@
 from app.api.addresses import router as addresses_router
 from app.api.admin_dashboard import router as admin_dashboard_router
+from app.api.admin_extended import router as admin_extended_router
 from app.api.admins import router as admins_router
 from app.api.auth import router as auth_router
 from app.api.carts import router as carts_router
@@ -17,6 +18,7 @@ from app.api.warranties import router as warranties_router
 __all__ = [
     "addresses_router",
     "admin_dashboard_router",
+    "admin_extended_router",
     "admins_router",
     "auth_router",
     "carts_router",

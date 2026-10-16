@@ -1,5 +1,6 @@
 from app.models.address import Address
 from app.models.admin import Admin
+from app.models.audit_log import AuditLog
 from app.models.cart import Cart
 from app.models.cart_item import CartItem
 from app.models.category import Category
@@ -17,6 +18,7 @@ from app.models.warranty_registration import WarrantyRegistration
 __all__ = [
     "Address",
     "Admin",
+    "AuditLog",
     "Cart",
     "CartItem",
     "Category",

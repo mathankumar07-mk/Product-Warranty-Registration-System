@@ -65,9 +65,25 @@ export const authApi = {
 
 export const adminApi = {
   dashboard: () => api.get('/admin/dashboard'),
+  overview: () => api.get('/admin/overview'),
   users: (page = 1, pageSize = 20) => api.get('/admin/users', { params: { page, page_size: pageSize } }),
+  searchUsers: (params = {}) => api.get('/admin/users/search', { params }),
+  getUser: (id) => api.get(`/admin/users/${id}`),
+  setUserActive: (id, isActive) => api.patch(`/admin/users/${id}`, { is_active: isActive }),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  listAdmins: () => api.get('/admin/admins'),
+  createAdmin: (data) => api.post('/admin/admins', data),
+  setAdminActive: (id, isActive) => api.patch(`/admin/admins/${id}`, { is_active: isActive }),
+  deleteAdmin: (id) => api.delete(`/admin/admins/${id}`),
   orders: (params = {}) => api.get('/admin/orders', { params }),
   payments: (page = 1, pageSize = 20) => api.get('/admin/payments', { params: { page, page_size: pageSize } }),
+  invoices: (params = {}) => api.get('/admin/invoices', { params }),
+  getInvoice: (id) => api.get(`/admin/invoices/${id}`),
+  downloadAdminInvoice: (id) => api.get(`/admin/invoices/${id}/download`, { responseType: 'blob' }),
+  adminNotifications: (params = {}) => api.get('/admin/notifications', { params }),
+  reports: () => api.get('/admin/reports/summary'),
+  auditLogs: (params = {}) => api.get('/admin/audit-logs', { params }),
+  settings: () => api.get('/admin/settings'),
   broadcast: (data) => api.post('/admin/notifications/broadcast', data),
   searchWarranties: (params = {}) => api.get('/warranties/registrations/search', { params }),
   listPolicies: () => api.get('/warranties/policies'),
@@ -122,6 +138,7 @@ export const paymentApi = {
   create: (data) => api.post('/payments', data),
   update: (id, data) => api.put(`/payments/${id}`, data),
   simulate: (id, success = true) => api.post(`/payments/${id}/simulate?success=${success}`),
+  refund: (id) => api.post(`/payments/${id}/refund`),
 };
 
 export const invoiceApi = {

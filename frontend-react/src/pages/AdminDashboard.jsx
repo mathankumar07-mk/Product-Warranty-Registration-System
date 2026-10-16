@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { adminApi } from '../services/api';
 
 export default function AdminDashboard() {
-  const [metrics, setMetrics] = useState(null);
+  const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [broadcast, setBroadcast] = useState({ title: '', message: '' });
-  const [broadcastResult, setBroadcastResult] = useState('');
 
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await adminApi.dashboard();
-        setMetrics(response.data);
+        const response = await adminApi.overview();
+        setData(response.data);
       } catch (err) {
         setError('Failed to load dashboard metrics');
       }
@@ -19,17 +18,24 @@ export default function AdminDashboard() {
     load();
   }, []);
 
-  const handleBroadcast = async (e) => {
-    e.preventDefault();
-    setBroadcastResult('');
-    try {
-      const response = await adminApi.broadcast(broadcast);
-      setBroadcastResult(`Sent to ${response.data.recipients} users.`);
-      setBroadcast({ title: '', message: '' });
-    } catch (err) {
-      setBroadcastResult(err.response?.data?.detail || 'Broadcast failed');
-    }
-  };
+  if (error) {
+    return (
+      <div className="page admin-page">
+        <div className="alert alert-error">{error}</div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="page admin-page">
+        <div className="loading">Loading dashboard…</div>
+      </div>
+    );
+  }
+
+  const t = data.totals;
+  const trendMax = Math.max(1, ...data.sales_trend.slice(-7).map((x) => x.orders));
 
   return (
     <div className="page admin-page">
@@ -38,62 +44,73 @@ export default function AdminDashboard() {
           <p className="eyebrow dark">Admin</p>
           <h1>Dashboard</h1>
         </div>
+        <Link to="/admin/reports" className="btn btn-outline">Reports & analytics</Link>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      <div className="admin-cards">
+        <div className="admin-stat-card"><span>Customers</span><strong>{t.customers}</strong></div>
+        <div className="admin-stat-card"><span>Active products</span><strong>{t.active_products}</strong></div>
+        <div className="admin-stat-card"><span>Categories</span><strong>{t.categories}</strong></div>
+        <div className="admin-stat-card"><span>Orders</span><strong>{t.orders}</strong></div>
+        <div className="admin-stat-card"><span>Total paid</span><strong>${t.total_paid}</strong></div>
+        <div className="admin-stat-card"><span>Warranties</span><strong>{t.warranty_registrations}</strong></div>
+        <div className="admin-stat-card"><span>Expiring soon</span><strong>{data.expiring_soon_warranties}</strong></div>
+      </div>
 
-      {metrics && (
+      <div className="admin-grid-2">
         <div className="detail-section-card">
-          <h2>Metrics</h2>
-          <div className="detail-meta-list">
-            <div>
-              <span>Users</span>
-              <strong>{metrics.users}</strong>
-            </div>
-            <div>
-              <span>Orders</span>
-              <strong>{metrics.orders}</strong>
-            </div>
-            <div>
-              <span>Revenue (paid)</span>
-              <strong>${metrics.revenue}</strong>
-            </div>
-            <div>
-              <span>Pending warranties</span>
-              <strong>{metrics.pending_warranties}</strong>
-            </div>
-            <div>
-              <span>Low-stock products</span>
-              <strong>{metrics.low_stock_products}</strong>
-            </div>
-          </div>
+          <h2>Recent orders</h2>
+          {data.recent_orders.length === 0 ? <p>No orders yet.</p> : (
+            <ul>
+              {data.recent_orders.map((o) => (
+                <li key={o.id}>#{o.id} {o.order_number || ''} · {o.status} · ${o.total_amount}</li>
+              ))}
+            </ul>
+          )}
+          <Link to="/admin/orders" className="muted-link">Manage orders →</Link>
         </div>
-      )}
+        <div className="detail-section-card">
+          <h2>Recent customers</h2>
+          {data.recent_users.length === 0 ? <p>No customers yet.</p> : (
+            <ul>
+              {data.recent_users.map((u) => <li key={u.id}>{u.name} · {u.email}</li>)}
+            </ul>
+          )}
+          <Link to="/admin/users" className="muted-link">Manage users →</Link>
+        </div>
+      </div>
+
+      <div className="admin-grid-2">
+        <div className="detail-section-card">
+          <h2>Recent warranties</h2>
+          {data.recent_warranties.length === 0 ? <p>No registrations yet.</p> : (
+            <ul>
+              {data.recent_warranties.map((w) => <li key={w.id}>{w.warranty_number || `#${w.id}`} · {w.status}</li>)}
+            </ul>
+          )}
+          <Link to="/admin/registrations" className="muted-link">Manage warranties →</Link>
+        </div>
+        <div className="detail-section-card">
+          <h2>Sales — last 7 days</h2>
+          {data.sales_trend.slice(-7).map((d) => (
+            <div key={d.date} className="report-bar-row">
+              <span className="report-bar-label">{d.date}</span>
+              <div className="report-bar-track">
+                <div className="report-bar-fill" style={{ width: `${Math.round((d.orders / trendMax) * 100)}%` }} />
+              </div>
+              <span className="report-bar-value">{d.orders}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="detail-section-card">
-        <h2>Broadcast notification</h2>
-        {broadcastResult && <div className="alert alert-success">{broadcastResult}</div>}
-        <form onSubmit={handleBroadcast} className="auth-form">
-          <div className="form-group">
-            <label>Title</label>
-            <input
-              type="text"
-              value={broadcast.title}
-              onChange={(e) => setBroadcast({ ...broadcast, title: e.target.value })}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Message</label>
-            <input
-              type="text"
-              value={broadcast.message}
-              onChange={(e) => setBroadcast({ ...broadcast, message: e.target.value })}
-              required
-            />
-          </div>
-          <button type="submit" className="btn btn-primary">Send to all users</button>
-        </form>
+        <h2>Top products</h2>
+        {data.top_products.length === 0 ? <p>No sales yet.</p> : (
+          <ul>
+            {data.top_products.map((p) => <li key={p.product_id}>{p.name}: {p.units_sold} sold · ${p.revenue}</li>)}
+          </ul>
+        )}
       </div>
     </div>
   );

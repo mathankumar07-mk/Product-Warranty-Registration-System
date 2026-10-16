@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -12,4 +12,7 @@ class Admin(Base):
     name = Column(String(120), nullable=False)
     email = Column(String(180), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    audit_logs = relationship("AuditLog", back_populates="admin")
