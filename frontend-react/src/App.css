@@ -2196,6 +2196,21 @@
 }
 
 /* ---- Admin console layout ---- */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: #2563eb;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 0 0 8px 0;
+  z-index: 50;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
 .admin-shell {
   display: flex;
   min-height: calc(100vh - 60px);

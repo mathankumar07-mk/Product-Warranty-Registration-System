@@ -52,23 +52,28 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className={`admin-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
-      <aside className="admin-sidebar">
+      <a href="#admin-content" className="skip-link">
+        Skip to admin content
+      </a>
+      <aside className="admin-sidebar" aria-label="Admin section navigation">
         <div className="admin-sidebar-header">
           <span className="admin-brand">Warranty Desk · Admin</span>
           <button
             type="button"
             className="btn btn-outline btn-small"
             onClick={() => setCollapsed((v) => !v)}
-            aria-label="Toggle sidebar"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
           >
             {collapsed ? '»' : '«'}
           </button>
         </div>
-        <nav className="admin-nav">
+        <nav className="admin-nav" aria-label="Admin pages">
           {NAV.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
+              aria-label={item.label}
               className={({ isActive }) => `admin-nav-link${isActive ? ' active' : ''}`}
             >
               {item.label}
@@ -88,11 +93,13 @@ export default function AdminLayout({ children }) {
               type="button"
               className="admin-profile-btn"
               onClick={() => setMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
             >
               {user?.name || user?.email || 'Admin'} ▾
             </button>
             {menuOpen && (
-              <div className="admin-profile-menu">
+              <div className="admin-profile-menu" role="menu" aria-label="Admin profile menu">
                 <div className="admin-profile-meta">
                   <strong>{user?.name}</strong>
                   <span>{user?.email}</span>
@@ -149,7 +156,9 @@ export default function AdminLayout({ children }) {
             )}
           </div>
         </header>
-        <main className="admin-content">{children}</main>
+        <main className="admin-content" id="admin-content" tabIndex={-1}>
+          {children}
+        </main>
       </div>
     </div>
   );
