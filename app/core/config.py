@@ -1,9 +1,9 @@
 """Application configuration (pydantic-settings with legacy constant exports).
 
 Existing modules import module-level constants (``from app.core.config import X``).
-New code may import ``settings``. Both stay in sync. MySQL is the primary
-database; Postgres and SQLite remain supported via ``DATABASE_URL`` for
-backward compatibility and isolated tests.
+New code may import ``settings``. Both stay in sync. PostgreSQL is the only
+supported server database; SQLite remains available for the isolated test
+suite via ``DATABASE_URL``.
 """
 
 from __future__ import annotations
@@ -24,9 +24,9 @@ class Settings(BaseSettings):
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     DB_HOST: str = os.getenv("DB_HOST", "127.0.0.1")
-    DB_PORT: str = os.getenv("DB_PORT", "3306")
+    DB_PORT: str = os.getenv("DB_PORT", "5432")
     DB_NAME: str = os.getenv("DB_NAME", "product_warranty_db")
-    DB_USER: str = os.getenv("DB_USER", "root")
+    DB_USER: str = os.getenv("DB_USER", "postgres")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change-this-secret-key")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")

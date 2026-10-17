@@ -9,10 +9,16 @@ from app.core.config import DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER
 
 def _normalize_database_url(raw: str) -> str:
     url = (raw or "").strip()
-    if url.startswith("mysql://"):
-        # Default to the pure-Python driver when no driver is specified.
-        return "mysql+pymysql://" + url[len("mysql://") :]
+    if url.startswith("postgres://"):
+        # Providers such as Railway expose ``postgres://``; SQLAlchemy
+        # expects the ``postgresql://`` scheme.
+        return "postgresql://" + url[len("postgres://") :]
     return url
+
+
+# PostgreSQL is the only supported server database. SQLite URLs are accepted
+# solely for the isolated automated test suite.
+SUPPORTED_SCHEMES = ("postgresql", "postgresql+psycopg", "postgresql+psycopg2", "sqlite")
 
 
 def _build_database_url() -> str:
@@ -20,16 +26,19 @@ def _build_database_url() -> str:
 
     database_url = _normalize_database_url(os.getenv("DATABASE_URL", ""))
     if database_url:
+        scheme = database_url.split("://", 1)[0]
+        if scheme not in SUPPORTED_SCHEMES:
+            raise RuntimeError(
+                f"Unsupported DATABASE_URL scheme {scheme!r}: only PostgreSQL "
+                "(and SQLite for tests) is supported"
+            )
         return database_url
 
-    # Backward compatibility: existing deployments use Postgres defaults
-    # (port 5432 / user postgres). Keep that driver; new installs default to MySQL.
-    legacy_postgres = str(DB_PORT) == "5432" or DB_USER == "postgres"
-    driver = "postgresql+psycopg2" if legacy_postgres else "mysql+pymysql"
+    # Local development default: local PostgreSQL (override with DATABASE_URL).
     return URL.create(
-        driver,
-        username=DB_USER,
-        password=DB_PASSWORD,
+        "postgresql+psycopg2",
+        username=DB_USER or None,
+        password=DB_PASSWORD or None,
         host=DB_HOST,
         port=int(DB_PORT),
         database=DB_NAME,
