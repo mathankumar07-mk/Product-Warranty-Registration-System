@@ -44,6 +44,23 @@ export default function AdminRegistrations() {
     }
   };
 
+  const exportCsv = async () => {
+    try {
+      const params = status ? { status } : {};
+      const response = await adminApi.exportRegistrationsCsv(params);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'warranty-registrations.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setNotice(err.response?.data?.detail || 'Export failed');
+    }
+  };
+
   return (
     <div className="page admin-page">
       <div className="page-header">
@@ -63,6 +80,7 @@ export default function AdminRegistrations() {
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <button className="btn btn-primary" onClick={load}>Search</button>
+        <button className="btn btn-outline" onClick={exportCsv}>Export CSV</button>
         <span className="muted-link">{rows.length} result(s)</span>
       </div>
 

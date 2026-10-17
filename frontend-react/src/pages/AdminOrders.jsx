@@ -42,6 +42,23 @@ export default function AdminOrders() {
     }
   };
 
+  const exportCsv = async () => {
+    try {
+      const params = status ? { status } : {};
+      const response = await adminApi.exportOrdersCsv(params);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'orders.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Export failed');
+    }
+  };
+
   return (
     <div className="page admin-page">
       <div className="page-header">
@@ -55,6 +72,7 @@ export default function AdminOrders() {
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
+        <button className="btn btn-outline" onClick={exportCsv}>Export CSV</button>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
