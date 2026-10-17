@@ -6,7 +6,7 @@ from app.core.dependencies import DBSession, get_current_admin, get_current_user
 from app.models.admin import Admin
 from app.models.user import User
 from app.schemas.payment import PaymentCreate, PaymentResponse, PaymentUpdate
-from app.services import payment_service
+from app.services import audit_service, payment_service
 from app.services.payment_gateway import get_gateway
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -69,7 +69,16 @@ def get_payment(payment_id: int, db: DBSession, current_user: User = Depends(get
 @router.put("/{payment_id}", response_model=PaymentResponse)
 def update_payment(payment_id: int, data: PaymentUpdate, db: DBSession, admin: Admin = Depends(get_current_admin)):
     try:
-        return payment_service.update_payment(db, payment_id, data)
+        updated = payment_service.update_payment(db, payment_id, data)
+        audit_service.log_admin_action(
+            db,
+            admin_id=admin.id,
+            action="payment.update",
+            entity_type="payment",
+            entity_id=payment_id,
+            details=f"Status -> {updated.status.value if updated.status else None}",
+        )
+        return updated
     except LookupError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
@@ -94,7 +103,16 @@ def simulate_payment(
 @router.post("/{payment_id}/refund", response_model=PaymentResponse)
 def refund_payment(payment_id: int, db: DBSession, admin: Admin = Depends(get_current_admin)):
     try:
-        return payment_service.refund_payment(db, payment_id)
+        refunded = payment_service.refund_payment(db, payment_id)
+        audit_service.log_admin_action(
+            db,
+            admin_id=admin.id,
+            action="payment.refund",
+            entity_type="payment",
+            entity_id=payment_id,
+            details=f"Refunded {refunded.amount} for order #{refunded.order_id}",
+        )
+        return refunded
     except LookupError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
