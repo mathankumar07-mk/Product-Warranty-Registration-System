@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../services/api';
+import AdminPagination from '../components/AdminPagination';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -121,11 +122,12 @@ export default function AdminUsers() {
         </div>
       )}
 
-      <div className="admin-pagination">
-        <button className="btn btn-outline btn-small" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
-        <span>Page {page}</span>
-        <button className="btn btn-outline btn-small" disabled={users.length < 20} onClick={() => setPage((p) => p + 1)}>Next</button>
-      </div>
+      <AdminPagination
+        page={page}
+        onPrev={() => setPage((p) => Math.max(1, p - 1))}
+        onNext={() => setPage((p) => p + 1)}
+        hasNext={users.length >= 20}
+      />
 
       {selected && (
         <div className="detail-section-card">
