@@ -20,13 +20,21 @@ from app.schemas.user import UserCreate
 from app.services.email_service import render_welcome_email, send_email
 
 
+def _normalize_email(email: str) -> str:
+    return email.strip().lower()
+
+
 def register_user(db: Session, data: UserCreate) -> User:
+    email = _normalize_email(data.email)
+    name = data.name.strip()
+    if not name:
+        raise ValueError("Name must not be blank")
     if (
-        db.query(User).filter(User.email == data.email).first()
-        or db.query(Admin).filter(Admin.email == data.email).first()
+        db.query(User).filter(User.email == email).first()
+        or db.query(Admin).filter(Admin.email == email).first()
     ):
         raise ValueError("Email is already registered")
-    user = User(name=data.name, email=data.email, password_hash=hash_password(data.password), phone=data.phone)
+    user = User(name=name, email=email, password_hash=hash_password(data.password), phone=data.phone)
     db.add(user)
     try:
         db.commit()
@@ -43,11 +51,12 @@ def register_user(db: Session, data: UserCreate) -> User:
 
 
 def authenticate_user(db: Session, email: str, password: str) -> tuple[str, bool]:
-    user = db.query(User).filter(User.email == email).first()
+    normalized = _normalize_email(email)
+    user = db.query(User).filter(User.email == normalized).first()
     if user and user.is_active and verify_password(password, user.password_hash):
         return create_access_token(str(user.id)), False
-    admin = db.query(Admin).filter(Admin.email == email).first()
-    if admin and verify_password(password, admin.password_hash):
+    admin = db.query(Admin).filter(Admin.email == normalized).first()
+    if admin and getattr(admin, "is_active", True) and verify_password(password, admin.password_hash):
         return create_access_token(str(admin.id), is_admin=True), True
     raise ValueError("Invalid email or password")
 
@@ -104,10 +113,11 @@ def change_password(db: Session, account: User | Admin, old_password: str, new_p
 
 
 def build_password_reset_token(db: Session, email: str) -> tuple[str, bool]:
-    user = db.query(User).filter(User.email == email).first()
+    normalized = _normalize_email(email)
+    user = db.query(User).filter(User.email == normalized).first()
     if user:
         return create_password_reset_token(str(user.id)), False
-    admin = db.query(Admin).filter(Admin.email == email).first()
+    admin = db.query(Admin).filter(Admin.email == normalized).first()
     if admin:
         return create_password_reset_token(str(admin.id), is_admin=True), True
     raise LookupError("Account not found")

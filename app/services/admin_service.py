@@ -8,12 +8,16 @@ from app.schemas.admin import AdminCreate
 
 def create_admin(db: Session, data: AdminCreate) -> Admin:
     from app.core.security import hash_password
+    email = data.email.strip().lower()
+    name = data.name.strip()
+    if not name:
+        raise ValueError("Name must not be blank")
     if (
-        db.query(Admin).filter(Admin.email == data.email).first()
-        or db.query(User).filter(User.email == data.email).first()
+        db.query(Admin).filter(Admin.email == email).first()
+        or db.query(User).filter(User.email == email).first()
     ):
         raise ValueError("Email is already registered")
-    admin = Admin(name=data.name, email=data.email, password_hash=hash_password(data.password))
+    admin = Admin(name=name, email=email, password_hash=hash_password(data.password))
     db.add(admin)
     try:
         db.commit()
