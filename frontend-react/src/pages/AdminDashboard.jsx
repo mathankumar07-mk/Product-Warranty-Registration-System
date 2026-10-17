@@ -11,7 +11,7 @@ export default function AdminDashboard() {
       try {
         const response = await adminApi.overview();
         setData(response.data);
-      } catch (err) {
+      } catch {
         setError('Failed to load dashboard metrics');
       }
     };

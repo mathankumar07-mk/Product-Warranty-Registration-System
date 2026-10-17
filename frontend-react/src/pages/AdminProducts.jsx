@@ -27,7 +27,7 @@ export default function AdminProducts() {
       const data = productRes.data;
       setProducts(Array.isArray(data) ? data : data.products || []);
       setCategories(Array.isArray(categoryRes.data) ? categoryRes.data : []);
-    } catch (err) {
+    } catch {
       setError('Failed to load catalogue');
     }
   };

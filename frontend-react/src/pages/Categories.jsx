@@ -15,7 +15,7 @@ export default function Categories() {
     try {
       const response = await categoryApi.list();
       setCategories(response.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load categories');
     } finally {
       setLoading(false);

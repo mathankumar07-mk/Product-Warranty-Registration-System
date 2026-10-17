@@ -19,7 +19,7 @@ export default function Notifications() {
     try {
       const response = await notificationApi.list(unreadOnly);
       setNotifications(response.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load notifications');
     } finally {
       setLoading(false);
@@ -30,7 +30,7 @@ export default function Notifications() {
     try {
       await notificationApi.markAsRead(id);
       setNotifications(notifications.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-    } catch (err) {
+    } catch {
       alert('Failed to mark as read');
     }
   };
@@ -39,7 +39,7 @@ export default function Notifications() {
     try {
       await notificationApi.markAllAsRead();
       setNotifications(notifications.map((n) => ({ ...n, is_read: true })));
-    } catch (err) {
+    } catch {
       alert('Failed to mark all as read');
     }
   };

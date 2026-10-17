@@ -18,7 +18,7 @@ export default function AdminWarranties() {
       ]);
       setRegistrations(regRes.data);
       setPolicies(polRes.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load warranties');
     }
   };

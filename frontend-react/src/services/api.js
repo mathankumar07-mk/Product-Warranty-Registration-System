@@ -39,7 +39,7 @@ api.interceptors.response.use(
           config._retried = true;
           config.headers.Authorization = `Bearer ${refreshResponse.data.access_token}`;
           return api(config);
-        } catch (refreshError) {
+        } catch {
           // Refresh failed — fall through to logout.
         }
       }

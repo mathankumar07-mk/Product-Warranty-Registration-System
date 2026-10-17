@@ -19,7 +19,7 @@ export default function OrderDetails() {
 
         setOrder(orderRes.data);
         setInvoice(invoiceRes?.data || null);
-      } catch (err) {
+      } catch {
         setError('Failed to load order details');
       } finally {
         setLoading(false);
@@ -100,7 +100,7 @@ export default function OrderDetails() {
                   onClick={async () => {
                     try {
                       await downloadInvoiceFile(invoice.id, invoice.invoice_number);
-                    } catch (err) {
+                    } catch {
                       alert('Failed to download invoice');
                     }
                   }}

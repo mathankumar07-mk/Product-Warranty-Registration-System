@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { warrantyApi, productApi, categoryApi } from '../services/api';
+import { warrantyApi } from '../services/api';
 
 export default function AdminPolicies() {
   const [policies, setPolicies] = useState([]);

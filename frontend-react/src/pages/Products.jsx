@@ -21,7 +21,7 @@ export default function Products() {
       // Backend returns a paginated envelope {products, total, ...}; be lenient.
       const data = response.data;
       setProducts(Array.isArray(data) ? data : data.products || []);
-    } catch (err) {
+    } catch {
       setError('Failed to load products');
     } finally {
       setLoading(false);

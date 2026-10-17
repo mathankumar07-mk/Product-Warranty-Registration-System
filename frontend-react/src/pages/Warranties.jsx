@@ -37,7 +37,7 @@ export default function Warranties() {
       const params = status ? { status } : {};
       const response = await warrantyApi.listRegistrations(params);
       setRegistrations(response.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load registrations');
     } finally {
       setLoading(false);
@@ -55,7 +55,7 @@ export default function Warranties() {
     try {
       const response = await warrantyApi.listPolicies();
       setPolicies(response.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load warranty policies');
     } finally {
       setPoliciesLoading(false);
@@ -82,13 +82,13 @@ export default function Warranties() {
               productIds: items.map((item) => item.product_id),
               productNames: [...new Set(items.map((item) => item.product?.name || `Product #${item.product_id}`))],
             };
-          } catch (err) {
+          } catch {
             return { ...inv, productIds: [], productNames: [] };
           }
         })
       );
       setInvoices(withItems);
-    } catch (err) {
+    } catch {
       setError('Failed to load your invoices');
     } finally {
       setInvoicesLoading(false);
@@ -122,7 +122,7 @@ export default function Warranties() {
     return `#${policy.id} · ${scope} · ${policy.warranty_period_months} months`;
   };
 
-  // Invoices have text numbers (INV-…​) but the API links by internal integer
+  // Invoices have text numbers (INV-…) but the API links by internal integer
   // ID. Accept either: digits go through as an ID, anything else is resolved
   // via GET /invoices/by-number/ before submitting.
   const resolveInvoiceId = async (raw) => {
@@ -132,7 +132,7 @@ export default function Warranties() {
     try {
       const response = await invoiceApi.getByNumber(value);
       return response.data.id;
-    } catch (err) {
+    } catch {
       throw new Error(`Invoice "${value}" was not found on your orders.`);
     }
   };
@@ -368,7 +368,7 @@ export default function Warranties() {
                       alert(
                         `Status: ${v.warranty_status}\nValid: ${v.valid}\nExpires: ${new Date(v.warranty_end_date).toLocaleDateString()}\nDays remaining: ${v.days_remaining}`
                       );
-                    } catch (err) {
+                    } catch {
                       alert('Failed to check validity');
                     }
                   }}

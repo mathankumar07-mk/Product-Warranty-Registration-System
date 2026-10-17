@@ -19,10 +19,10 @@ export default function ProductDetails() {
         try {
           const policy = await warrantyApi.getPolicyByProduct(id);
           setWarrantyMonths(policy.data.warranty_period_months);
-        } catch (policyErr) {
+        } catch {
           setWarrantyMonths(null);
         }
-      } catch (err) {
+      } catch {
         setError('Failed to load product details');
       } finally {
         setLoading(false);

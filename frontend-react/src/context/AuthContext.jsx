@@ -16,13 +16,13 @@ export function AuthProvider({ children }) {
     try {
       const response = await authApi.me();
       setUser({ ...response.data, role: 'customer' });
-    } catch (error) {
+    } catch {
       // Fall through to admin profile: admins authenticate with is_admin tokens
       // that /auth/me rejects.
       try {
         const adminResponse = await authApi.adminMe();
         setUser({ ...adminResponse.data, role: 'admin' });
-      } catch (adminError) {
+      } catch {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         setUser(null);
@@ -60,7 +60,7 @@ export function AuthProvider({ children }) {
       setUser(adminUser);
       setLoading(false);
       return adminUser;
-    } catch (error) {
+    } catch {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       setUser(null);

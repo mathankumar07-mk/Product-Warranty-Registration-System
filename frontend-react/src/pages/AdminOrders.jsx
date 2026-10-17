@@ -14,7 +14,7 @@ export default function AdminOrders() {
       const params = status ? { status } : {};
       const response = await adminApi.orders(params);
       setOrders(response.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load orders');
     }
   };

@@ -19,7 +19,7 @@ export default function Orders() {
     try {
       const response = await orderApi.list();
       setOrders(response.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load orders');
     } finally {
       setLoading(false);
@@ -103,7 +103,7 @@ export default function Orders() {
                     try {
                       const invoice = await invoiceApi.getByOrder(order.id);
                       await downloadInvoiceFile(invoice.data.id, invoice.data.invoice_number);
-                    } catch (err) {
+                    } catch {
                       alert('Invoice not available yet');
                     }
                   }}
