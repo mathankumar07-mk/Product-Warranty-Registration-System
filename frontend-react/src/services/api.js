@@ -45,7 +45,8 @@ api.interceptors.response.use(
       }
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
-      window.location.href = '/login';
+      const onAdminPage = window.location.pathname.startsWith('/admin');
+      window.location.href = onAdminPage ? '/admin/login' : '/login';
     }
     return Promise.reject(error);
   }
