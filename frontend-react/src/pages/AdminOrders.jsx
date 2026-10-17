@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { adminApi, orderApi } from '../services/api';
 
 const STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
@@ -8,6 +7,7 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [detail, setDetail] = useState(null);
 
   const load = async () => {
     try {
@@ -27,8 +27,18 @@ export default function AdminOrders() {
     try {
       await orderApi.update(id, { status: next });
       await load();
+      if (detail?.id === id) await viewDetail(id);
     } catch (err) {
       alert(err.response?.data?.detail || 'Status update failed');
+    }
+  };
+
+  const viewDetail = async (id) => {
+    try {
+      const response = await adminApi.getOrder(id);
+      setDetail(response.data);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to load order details');
     }
   };
 
@@ -70,9 +80,9 @@ export default function AdminOrders() {
               </div>
             </div>
             <div className="order-actions">
-              <Link to={`/orders/${order.id}`} className="btn btn-outline order-action-btn">
+              <button className="btn btn-outline order-action-btn" onClick={() => viewDetail(order.id)}>
                 View Details
-              </Link>
+              </button>
               <select
                 value=""
                 onChange={(e) => e.target.value && handleStatus(order.id, e.target.value)}
@@ -86,6 +96,32 @@ export default function AdminOrders() {
           </div>
         ))}
       </div>
+
+      {detail && (
+        <div className="detail-section-card">
+          <h2>Order #{detail.id} {detail.order_number || ''}</h2>
+          <p>
+            {detail.customer ? `${detail.customer.name} · ${detail.customer.email}` : `User #${orders.find((o) => o.id === detail.id)?.user_id}`} · {detail.status} · ${detail.total_amount}
+          </p>
+          <h3>Items</h3>
+          <ul>
+            {detail.items.map((it) => (
+              <li key={it.id}>{it.product_name || `Product #${it.product_id}`} × {it.quantity} @ ${it.unit_price}</li>
+            ))}
+          </ul>
+          <h3>Payments</h3>
+          {detail.payments.length === 0 ? <p>No payments recorded.</p> : (
+            <ul>
+              {detail.payments.map((p) => (
+                <li key={p.id}>#{p.id} · {p.method} · {p.status} · ${p.amount}</li>
+              ))}
+            </ul>
+          )}
+          <h3>Invoice</h3>
+          <p>{detail.invoice ? `${detail.invoice.invoice_number} · $${detail.invoice.total_amount}` : 'No invoice yet.'}</p>
+          <button className="btn btn-outline btn-small" onClick={() => setDetail(null)}>Close details</button>
+        </div>
+      )}
     </div>
   );
 }
