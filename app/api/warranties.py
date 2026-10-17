@@ -5,7 +5,7 @@ from app.models.admin import Admin
 from app.models.user import User
 from app.schemas.warranty import WarrantyPolicyCreate, WarrantyPolicyResponse, WarrantyPolicyUpdate
 from app.schemas.warranty_registration import WarrantyRegistrationCreate, WarrantyRegistrationResponse, WarrantyRegistrationUpdate
-from app.services import warranty_service
+from app.services import audit_service, warranty_service
 
 router = APIRouter(prefix="/warranties", tags=["warranties"])
 
@@ -91,7 +91,16 @@ def get_registration(registration_id: int, db: DBSession, current_user: User = D
 @router.put("/registrations/{registration_id}", response_model=WarrantyRegistrationResponse)
 def update_registration(registration_id: int, data: WarrantyRegistrationUpdate, db: DBSession, admin: Admin = Depends(get_current_admin)):
     try:
-        return warranty_service.update_registration_status(db, registration_id, data)
+        updated = warranty_service.update_registration_status(db, registration_id, data)
+        audit_service.log_admin_action(
+            db,
+            admin_id=admin.id,
+            action="warranty.decision",
+            entity_type="warranty_registration",
+            entity_id=registration_id,
+            details=f"Status -> {updated.warranty_status.value}",
+        )
+        return updated
     except LookupError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 
