@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -5,10 +6,20 @@ from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate
 
 
+def _name_taken(db: Session, name: str, exclude_id: int | None = None) -> bool:
+    query = db.query(Category).filter(func.lower(Category.name) == name.strip().lower())
+    if exclude_id is not None:
+        query = query.filter(Category.id != exclude_id)
+    return db.query(query.exists()).scalar()
+
+
 def create_category(db: Session, data: CategoryCreate) -> Category:
-    if db.query(Category).filter(Category.name == data.name).first():
+    name = data.name.strip()
+    if not name:
+        raise ValueError("Category name must not be blank")
+    if _name_taken(db, name):
         raise ValueError("Category already exists")
-    category = Category(**data.model_dump())
+    category = Category(name=name, description=data.description)
     db.add(category)
     try:
         db.commit()
@@ -28,7 +39,15 @@ def get_category(db: Session, category_id: int) -> Category:
 
 def update_category(db: Session, category_id: int, data: CategoryUpdate) -> Category:
     category = get_category(db, category_id)
-    for key, value in data.model_dump(exclude_unset=True).items():
+    values = data.model_dump(exclude_unset=True)
+    if "name" in values and values["name"] is not None:
+        name = values["name"].strip()
+        if not name:
+            raise ValueError("Category name must not be blank")
+        if _name_taken(db, name, exclude_id=category_id):
+            raise ValueError("Category already exists")
+        values["name"] = name
+    for key, value in values.items():
         setattr(category, key, value)
     try:
         db.commit()
