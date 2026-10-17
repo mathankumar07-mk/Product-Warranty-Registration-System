@@ -1,10 +1,9 @@
 # Deployment
 
-## Local (MySQL primary)
+## Local (PostgreSQL)
 
 1. `cp .env.example .env` and set `DATABASE_URL`
-   (e.g. `mysql+pymysql://root:pw@127.0.0.1:3306/product_warranty_db`)
-   or `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD`.
+   (e.g. `postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/product_warranty_db`).
 2. `python -m pip install -r requirements.txt`
 3. `alembic upgrade head` (or rely on app startup `create_all`).
 4. `uvicorn app.main:app --reload` -> http://127.0.0.1:8000 (`/docs`).

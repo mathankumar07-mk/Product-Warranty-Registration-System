@@ -8,7 +8,7 @@ JWT auth, logging, exceptions.
 flowchart LR
   FE[Frontend] --> API[FastAPI routers<br/>/auth /products /orders ...<br/>+ /api/v1 aliases]
   API --> SVC[Services<br/>cart/order/payment/warranty]
-  SVC --> DB[(MySQL primary<br/>Postgres/SQLite compat)]
+  SVC --> DB[(PostgreSQL only<br/>SQLite for tests)]
   SVC --> NOTIF[Notifications + optional SMTP]
   API --> HEALTH[/health /ready<br/>public]
 ```

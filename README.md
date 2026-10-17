@@ -30,20 +30,20 @@ The active backend package is the root `app/` package so it runs with `uvicorn a
 
 ## Database Setup
 
-MySQL is the primary database (`mysql+pymysql`). PostgreSQL and SQLite remain
-supported via `DATABASE_URL` for backward compatibility and isolated tests.
+PostgreSQL is the only supported server database (`postgresql+psycopg2`;
+`postgres://` URLs from providers are accepted too). SQLite remains available
+for the isolated test suite via `DATABASE_URL`.
 
 ```env
-DATABASE_URL=mysql+pymysql://root:password@127.0.0.1:3306/product_warranty_db
+DATABASE_URL=postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/product_warranty_db
 JWT_SECRET_KEY=change-this-secret-key
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```
 
 For local development, copy `.env.example` to `.env`. `DATABASE_URL` overrides
-`DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` (legacy Postgres defaults still
-use the `postgresql+psycopg2` driver when `DB_PORT=5432`/`DB_USER=postgres`).
-SQLite example: `sqlite:///./local.db`. Set `CORS_ORIGINS` to a comma-separated
+`DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` (defaults target a local
+PostgreSQL at `127.0.0.1:5432`). Set `CORS_ORIGINS` to a comma-separated
 list of trusted frontend origins. In production, set `ENVIRONMENT=production`
 (or `APP_ENV`) and replace the development JWT secret with a long, random
 secret (>=32 chars); the application refuses to start with the default secret.

@@ -13,6 +13,6 @@ warranty_registrations, notifications (+ admins for operations).
   `with_for_update()` row locks on cart/product/order during checkout;
   unique order/warranty/invoice numbers generated server-side.
 - Money: `NUMERIC(12,2)` everywhere; never trust frontend totals.
-- MySQL primary (`mysql+pymysql`); Postgres/SQLite via `DATABASE_URL`.
+- PostgreSQL only (`postgresql+psycopg2`); SQLite via `DATABASE_URL` for tests.
 - Migrations: `alembic.ini` + `migrations/` (baseline `0001_baseline`
   calls idempotent `create_all`); legacy `initialize_database()` kept.

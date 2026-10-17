@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased (PostgreSQL only)
+
+- Database: PostgreSQL is now the only supported server database; MySQL
+  support (`pymysql`, `mysql://` handling, MySQL-first defaults) removed.
+  `postgres://` URLs are normalized to `postgresql://`; anything outside
+  PostgreSQL/SQLite-test is rejected with a clear error at startup.
+
 ## Unreleased (admin console completion)
 
 - Admin console: separate `/admin/login` with server-verified admin check,
