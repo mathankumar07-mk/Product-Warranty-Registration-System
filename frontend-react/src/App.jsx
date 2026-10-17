@@ -49,12 +49,13 @@ function PrivateRoute({ children }) {
 
 function AdminRoute({ children }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
 
-  if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;
   if (!isAdmin) return <Navigate to="/" replace />;
   return <AdminLayout>{children}</AdminLayout>;
 }

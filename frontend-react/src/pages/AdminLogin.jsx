@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function AdminLogin() {
@@ -9,6 +9,8 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const { adminLogin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = location.state?.from || '/admin/dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,7 +18,7 @@ export default function AdminLogin() {
     setLoading(true);
     try {
       await adminLogin(email, password);
-      navigate('/admin/dashboard', { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Admin login failed');
     } finally {
