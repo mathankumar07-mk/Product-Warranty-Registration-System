@@ -437,6 +437,93 @@ def delete_user(user_id: int, db: DBSession, admin: Admin = Depends(get_current_
 
 # ------------------------------------------------------------------ orders ---
 
+def _csv_cell(value) -> str:
+    text = "" if value is None else str(value)
+    if text[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + text
+    return text
+
+
+@router.get("/orders/export")
+def export_orders_csv(
+    db: DBSession,
+    admin: Admin = Depends(get_current_admin),
+    status: str | None = None,
+):
+    import csv
+    import io
+
+    from fastapi.responses import StreamingResponse
+
+    query = db.query(Order).order_by(Order.created_at.desc())
+    if status is not None:
+        query = query.filter(Order.status == OrderStatus(status))
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["id", "order_number", "user_id", "customer_email", "status", "total_amount", "created_at"])
+    for order in query.all():
+        writer.writerow(
+            [
+                _csv_cell(order.id),
+                _csv_cell(order.order_number),
+                _csv_cell(order.user_id),
+                _csv_cell(order.user.email if order.user else None),
+                _csv_cell(order.status.value if order.status else None),
+                _csv_cell(order.total_amount),
+                _csv_cell(_iso(order.created_at)),
+            ]
+        )
+    buffer.seek(0)
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=orders.csv"},
+    )
+
+
+@router.get("/registrations/export")
+def export_registrations_csv(
+    db: DBSession,
+    admin: Admin = Depends(get_current_admin),
+    status: str | None = None,
+):
+    import csv
+    import io
+
+    from fastapi.responses import StreamingResponse
+
+    query = db.query(WarrantyRegistration).order_by(WarrantyRegistration.created_at.desc())
+    if status is not None:
+        try:
+            query = query.filter(WarrantyRegistration.warranty_status == WarrantyStatus(status))
+        except ValueError as error:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid status: {status}") from error
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        ["id", "warranty_number", "user_id", "product_id", "serial_number", "status", "purchase_date", "warranty_end_date"]
+    )
+    for reg in query.all():
+        writer.writerow(
+            [
+                _csv_cell(reg.id),
+                _csv_cell(reg.warranty_number),
+                _csv_cell(reg.user_id),
+                _csv_cell(reg.product_id),
+                _csv_cell(reg.serial_number),
+                _csv_cell(reg.warranty_status.value if reg.warranty_status else None),
+                _csv_cell(_iso(reg.purchase_date)),
+                _csv_cell(_iso(reg.warranty_end_date)),
+            ]
+        )
+    buffer.seek(0)
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=warranty-registrations.csv"},
+    )
+
+
 @router.get("/orders/{order_id}")
 def get_order_admin(order_id: int, db: DBSession, admin: Admin = Depends(get_current_admin)) -> dict:
     order = db.get(Order, order_id)
