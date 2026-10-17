@@ -86,6 +86,7 @@ export const adminApi = {
   auditLogs: (params = {}) => api.get('/admin/audit-logs', { params }),
   settings: () => api.get('/admin/settings'),
   broadcast: (data) => api.post('/admin/notifications/broadcast', data),
+  changePassword: (data) => api.post('/auth/admin/change-password', data),
   searchWarranties: (params = {}) => api.get('/warranties/registrations/search', { params }),
   listPolicies: () => api.get('/warranties/policies'),
   importProducts: (file) => {

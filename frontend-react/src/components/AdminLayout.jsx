@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { adminApi } from '../services/api';
 
 const NAV = [
   { to: '/admin/dashboard', label: 'Dashboard' },
@@ -22,12 +23,31 @@ const NAV = [
 export default function AdminLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwForm, setPwForm] = useState({ old_password: '', new_password: '', confirm: '' });
+  const [pwNotice, setPwNotice] = useState('');
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     await logout();
     navigate('/admin/login', { replace: true });
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPwNotice('');
+    if (pwForm.new_password !== pwForm.confirm) {
+      setPwNotice('New passwords do not match');
+      return;
+    }
+    try {
+      await adminApi.changePassword({ old_password: pwForm.old_password, new_password: pwForm.new_password });
+      setPwNotice('Password changed');
+      setPwForm({ old_password: '', new_password: '', confirm: '' });
+    } catch (err) {
+      setPwNotice(err.response?.data?.detail || 'Password change failed');
+    }
   };
 
   return (
@@ -77,6 +97,51 @@ export default function AdminLayout({ children }) {
                   <strong>{user?.name}</strong>
                   <span>{user?.email}</span>
                 </div>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-small"
+                  onClick={() => { setPwOpen((v) => !v); setPwNotice(''); }}
+                >
+                  {pwOpen ? 'Hide password form' : 'Change password'}
+                </button>
+                {pwOpen && (
+                  <form onSubmit={handlePasswordChange} className="auth-form">
+                    {pwNotice && <div className="alert alert-success">{pwNotice}</div>}
+                    <div className="form-group">
+                      <label htmlFor="admin-old-password">Current password</label>
+                      <input
+                        id="admin-old-password"
+                        type="password"
+                        value={pwForm.old_password}
+                        onChange={(e) => setPwForm({ ...pwForm, old_password: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="admin-new-password">New password (min 8 chars)</label>
+                      <input
+                        id="admin-new-password"
+                        type="password"
+                        value={pwForm.new_password}
+                        onChange={(e) => setPwForm({ ...pwForm, new_password: e.target.value })}
+                        required
+                        minLength={8}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="admin-confirm-password">Confirm new password</label>
+                      <input
+                        id="admin-confirm-password"
+                        type="password"
+                        value={pwForm.confirm}
+                        onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+                        required
+                        minLength={8}
+                      />
+                    </div>
+                    <button type="submit" className="btn btn-primary btn-small">Update password</button>
+                  </form>
+                )}
                 <button type="button" className="btn btn-outline btn-small" onClick={handleLogout}>
                   Logout
                 </button>
