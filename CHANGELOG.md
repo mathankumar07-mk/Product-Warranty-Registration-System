@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased (admin console completion)
+
+- Admin console: separate `/admin/login` with server-verified admin check,
+  collapsible sidebar layout, deep-link redirect preservation, and
+  `/admin/login` routing for expired admin sessions.
+- Admin APIs: `/admin/overview`, `/admin/users/search|/{id}`, `/admin/admins`
+  (last-admin guards), `/admin/orders` search filters, `/admin/orders/{id}`,
+  CSV exports, `/admin/invoices`, `/admin/notifications`,
+  `/admin/reports/summary`, `/admin/settings`, `/auth/admin/change-password`.
+- Audit trail: immutable `audit_logs` table (migration `0006_admin_audit`)
+  recording admin/order/warranty/payment decisions with graceful 503 fallback.
+- Validation: email normalization, case-insensitive category uniqueness,
+  warranty duration cap (120 months), `is_active` in user responses.
+- Tests: `test_admin_overview|_users|_records`, `test_validation`,
+  `test_admin_actions`, `test_migrations` (0006 cycle + fallback).
+- Frontend: shared pagination, CSV export buttons, print stylesheet, layout
+  landmarks, oxlint unused-binding cleanup.
+
 ## Unreleased (backend completion)
 
 - Auth: refresh-token rotation + revocation (`RefreshToken` table),

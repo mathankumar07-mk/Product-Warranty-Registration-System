@@ -12,6 +12,8 @@ A FastAPI backend for product browsing, shopping carts, orders, payments, invoic
 - Addresses, carts, orders, and sandbox payments
 - Invoice records and warranty policy registration
 - User notifications
+- Admin console (separate `/admin/login`, dashboard, user/admin management,
+  orders, payments, invoices, warranties, notifications, reports, audit logs)
 - Automatic SQLAlchemy table initialization for the 14 specified tables
 
 ## Technology Stack
@@ -87,6 +89,23 @@ npm run dev
 
 The frontend will be available at `http://127.0.0.1:5173`.
 
+## Admin Console
+
+Administrators sign in at `/admin/login` (customer accounts are rejected there).
+Unauthenticated visits to `/admin/*` redirect to `/admin/login`, and expired
+admin sessions return there instead of the customer login page. The console
+provides a collapsible sidebar with Dashboard, Users, Admin Accounts, Products,
+Categories, Orders, Payments, Purchase Invoices, Warranty Policies, Warranty
+Registrations, Notifications, Reports & Analytics, Audit Logs, and Settings.
+
+Backend authorization never trusts client roles: every admin endpoint requires a
+JWT with `is_admin=true` for an active row in the `admins` table. Deactivated
+accounts cannot log in. Admin creation, activation, order/warranty/payment
+decisions, and password changes are recorded in the immutable `audit_logs`
+table (migration `0006_admin_audit`). The last active administrator cannot be
+deactivated or deleted, and customers with historical orders or warranties can
+only be deactivated, never deleted.
+
 ## API Overview
 
 All paths below also work under `/api/v1` (e.g. `/api/v1/orders`); bare paths
@@ -100,7 +119,14 @@ are kept for backward compatibility.
 - Payments and invoices: `/payments` (incl. `/webhook`, `/{id}/refund`, `Idempotency-Key`), `/invoices` (incl. `/{id}/download`)
 - Warranties: `/warranties` (registrations now expose `warranty_number`; policies have `is_active`; category fallback; external proof → `PENDING_REVIEW`)
 - Notifications: `/notifications`
-- Admin: `/admin/dashboard`, `/admin/users`, `/admin/orders`, `/admin/payments`, `/admin/notifications/broadcast`, `/admins`
+- Admin: `/admin/overview` (totals, recent activity, sales trend, top products),
+  `/admin/users/search|/{id}`, `/admin/admins`, `/admin/orders` (customer and
+  order-number search) + `/admin/orders/{id}|/export`, `/admin/payments`,
+  `/admin/invoices` (+ `/{id}|/{id}/download`), `/admin/notifications`,
+  `/admin/registrations/export`, `/admin/reports/summary`, `/admin/audit-logs`,
+  `/admin/settings`, `/admin/dashboard`, `/admin/users`, `/admin/orders`,
+  `/admin/payments`, `/admin/notifications/broadcast`, `/admins`,
+  `/auth/admin/change-password`, `/auth/admin/register`
 - Catalogue: `POST /products/import` (admin CSV)
 - Database health check: `/database-test`
 
