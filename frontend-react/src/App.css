@@ -2474,3 +2474,31 @@
   }
 }
 
+@media print {
+  .admin-sidebar,
+  .admin-topbar,
+  .navbar,
+  .admin-toolbar,
+  .admin-pagination,
+  .order-actions,
+  .btn {
+    display: none !important;
+  }
+
+  .admin-shell {
+    display: block;
+  }
+
+  .admin-content {
+    max-width: none;
+    padding: 0;
+  }
+
+  .detail-section-card,
+  .order-card,
+  .admin-stat-card {
+    break-inside: avoid;
+    border: 1px solid #999;
+  }
+}
+
