@@ -435,6 +435,64 @@ def delete_user(user_id: int, db: DBSession, admin: Admin = Depends(get_current_
     return None
 
 
+# ------------------------------------------------------------------ orders ---
+
+@router.get("/orders/{order_id}")
+def get_order_admin(order_id: int, db: DBSession, admin: Admin = Depends(get_current_admin)) -> dict:
+    order = db.get(Order, order_id)
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    customer = order.user
+    return {
+        "id": order.id,
+        "order_number": order.order_number,
+        "status": order.status.value if order.status else None,
+        "total_amount": _money(order.total_amount),
+        "created_at": _iso(order.created_at),
+        "updated_at": _iso(order.updated_at),
+        "customer": (
+            {
+                "id": customer.id,
+                "name": customer.name,
+                "email": customer.email,
+                "phone": customer.phone,
+            }
+            if customer
+            else None
+        ),
+        "items": [
+            {
+                "id": it.id,
+                "product_id": it.product_id,
+                "product_name": it.product.name if it.product else None,
+                "quantity": it.quantity,
+                "unit_price": _money(it.unit_price),
+            }
+            for it in order.items
+        ],
+        "payments": [
+            {
+                "id": p.id,
+                "amount": _money(p.amount),
+                "status": p.status.value if p.status else None,
+                "method": p.method.value if hasattr(p.method, "value") else p.method,
+                "transaction_id": p.transaction_id,
+                "created_at": _iso(p.created_at),
+            }
+            for p in order.payments
+        ],
+        "invoice": (
+            {
+                "id": order.invoice.id,
+                "invoice_number": order.invoice.invoice_number,
+                "total_amount": _money(order.invoice.total_amount),
+            }
+            if order.invoice
+            else None
+        ),
+    }
+
+
 # ---------------------------------------------------------------- invoices ---
 
 @router.get("/invoices")
