@@ -5,7 +5,7 @@ from app.models.admin import Admin
 from app.models.order import Order, OrderStatus
 from app.models.user import User
 from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate
-from app.services import order_service
+from app.services import audit_service, order_service
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -37,7 +37,18 @@ def get_order(order_id: int, db: DBSession, current_user: User = Depends(get_cur
 def update_order(order_id: int, data: OrderUpdate, db: DBSession, admin: Admin = Depends(get_current_admin)):
     try:
         if data.status:
-            return order_service.update_order_status(db, order_id, OrderStatus(data.status))
+            previous = db.get(Order, order_id)
+            previous_status = previous.status.value if previous and previous.status else None
+            updated = order_service.update_order_status(db, order_id, OrderStatus(data.status))
+            audit_service.log_admin_action(
+                db,
+                admin_id=admin.id,
+                action="order.status",
+                entity_type="order",
+                entity_id=order_id,
+                details=f"Status {previous_status} -> {updated.status.value}",
+            )
+            return updated
         raise HTTPException(status_code=400, detail="No valid fields to update")
     except LookupError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
