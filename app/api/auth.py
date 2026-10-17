@@ -17,6 +17,7 @@ from app.schemas.auth import (
 )
 from app.schemas.user import UserCreate, UserResponse
 from app.services import auth_service
+from app.services import audit_service
 from app.services.email_service import send_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -79,6 +80,26 @@ def change_password(
         auth_service.change_password(db, current_user, data.old_password, data.new_password)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    return None
+
+
+@router.post("/admin/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_admin_password(
+    data: ChangePasswordRequest,
+    db: DBSession,
+    admin: Admin = Depends(get_current_admin),
+):
+    try:
+        auth_service.change_password(db, admin, data.old_password, data.new_password)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    audit_service.log_admin_action(
+        db,
+        admin_id=admin.id,
+        action="admin.change-password",
+        entity_type="admin",
+        entity_id=admin.id,
+    )
     return None
 
 
