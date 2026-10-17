@@ -75,12 +75,18 @@ def list_all_orders(
     db: DBSession,
     admin: Admin = Depends(get_current_admin),
     status: str | None = None,
+    user_id: int | None = None,
+    q: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ):
     query = db.query(Order).order_by(Order.created_at.desc())
     if status is not None:
         query = query.filter(Order.status == OrderStatus(status))
+    if user_id is not None:
+        query = query.filter(Order.user_id == user_id)
+    if q:
+        query = query.filter(Order.order_number.ilike(f"%{q.strip()}%"))
     page = max(page, 1)
     page_size = min(max(page_size, 1), 100)
     return query.offset((page - 1) * page_size).limit(page_size).all()
